@@ -71,13 +71,19 @@ are left alone and missing ones are created. If a run fails part-way
 again; it picks up where it stopped. You will see `NOTICE: ... already
 exists, skipping` lines, which are informational, not errors.
 
-**Verify it worked.** In a new query, run:
+**Verify it worked.** In a new query, run this — one query, because the
+SQL Editor only shows the result of the *last* statement you run:
 
 ```sql
-select count(*) from public.settings;          -- expect 14
-select count(*) from public.marking_criteria;  -- expect 5
-select count(*) from pg_policies where schemaname = 'public';  -- expect 40
+select
+  (select count(*) from public.settings)                         as settings,
+  (select count(*) from public.marking_criteria)                 as criteria,
+  (select count(*) from pg_policies where schemaname = 'public') as policies,
+  (select count(*) from information_schema.tables
+    where table_schema = 'public' and table_type = 'BASE TABLE') as tables;
 ```
+
+Expected: **14, 5, 40, 12**.
 
 If any of those come back wrong, something did not run. Scroll up in the
 SQL Editor output for the first red error and fix that one — later
