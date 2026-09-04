@@ -3,6 +3,8 @@ import { requireProfile, isSpoc } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { SettingsForm } from '@/components/admin/SettingsForm';
 import { CreateAccountForm } from '@/components/admin/CreateAccountForm';
+import { AccountList } from '@/components/admin/AccountList';
+import type { UserProfile } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Event settings · PIEMR Hackathon' };
@@ -14,7 +16,17 @@ export default async function AdminSettingsPage() {
   if (!isSpoc(profile)) redirect('/dashboard/admin');
 
   const supabase = createClient();
-  const { data: rows } = await supabase.from('settings').select('key, value, description');
+
+  // RLS filters super-admin rows out for an ordinary admin, so this list
+  // shows exactly what the caller is allowed to manage.
+  const [{ data: rows }, { data: accounts }] = await Promise.all([
+    supabase.from('settings').select('key, value, description'),
+    supabase
+      .from('users')
+      .select('id, email, full_name, role, admin_subtype, is_active, created_at')
+      .order('role')
+      .order('created_at', { ascending: false }),
+  ]);
 
   const settings = Object.fromEntries((rows ?? []).map((r) => [r.key as string, r.value]));
 
@@ -31,6 +43,8 @@ export default async function AdminSettingsPage() {
       <SettingsForm initial={settings} />
 
       <CreateAccountForm canCreateAdmin={profile.role === 'super_admin'} />
+
+      <AccountList users={(accounts ?? []) as UserProfile[]} />
     </div>
   );
 }

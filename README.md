@@ -339,6 +339,22 @@ never marks.
   changes only — no movement — without that having to be remembered at
   each call site.
 
+## Managing accounts
+
+**Passwords cannot be shown to anyone, including an administrator.**
+Supabase Auth stores only a one-way hash, so there is nothing to reveal —
+which is what keeps every account safe if the database is ever exposed.
+
+What an administrator can do, from **Settings → Accounts**, is set a new
+password and hand it over — the same way accounts are created. A strong
+one is generated for you, and every reset is written to the audit log
+with who did it and when, which reading a stored password would not give
+you. Accounts can also be disabled, which removes access while keeping
+their audit trail intact.
+
+Only a super-admin can reset an admin's password, and no HTTP path can
+touch a super-admin account.
+
 ## Branding
 
 `src/lib/branding.ts` and `src/lib/leadership.ts` hold everything
@@ -346,8 +362,13 @@ institution-specific. Both fall back to designed placeholders — a
 monogram and an initials badge — so nothing ever renders as a broken
 image:
 
-- **PIEMR logo** — save it as `public/piemr-logo.png`, then set
-  `PIEMR_LOGO` to `'/piemr-logo.png'`.
+- **PIEMR logo** — currently loaded from the institute's own CDN. To host
+  it yourself, save it as `public/piemr-logo.png` and set `PIEMR_LOGO`.
+- **SIH logo** — save the current edition's mark as `public/sih-logo.png`
+  and set `SIH_LOGO`. It is deliberately not bundled: SIH refreshes its
+  identity each edition, and a stale mark in the repository would quietly
+  become wrong. Until one is set, the hero shows a text lockup naming the
+  edition.
 - **Leadership photos** — save square images into `public/leadership/`
   and set each `photo`, or paste an https URL from piemr.edu.in. Photos
   are cropped square and centred, so a portrait headshot works unedited.

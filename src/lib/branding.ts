@@ -20,3 +20,23 @@ export const PIEMR_LOGO: string | null =
 
 /** Shown when no logo is set, or when the file fails to load. */
 export const PIEMR_MONOGRAM = 'PI';
+
+/**
+ * Official Smart India Hackathon mark.
+ *
+ * Not bundled: it is a government mark, and this repository should not
+ * carry a copy of one that may be superseded. SIH refreshes its identity
+ * each edition, so an old file here would quietly become wrong.
+ *
+ * TO ADD IT
+ *   1. Save the current edition's logo as `public/sih-logo.png`
+ *      (transparent PNG, about 400px on the long edge).
+ *   2. Set SIH_LOGO below to '/sih-logo.png'.
+ *
+ * Until then the hero shows a text lockup instead, which is accurate and
+ * carries no risk of displaying a stale mark.
+ */
+export const SIH_LOGO: string | null = null;
+
+/** Edition shown in the hero lockup. Update it each year. */
+export const SIH_EDITION = 'Smart India Hackathon 2026';

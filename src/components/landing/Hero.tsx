@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { ArrowRight, CalendarDays, Users } from 'lucide-react';
 import { StatCounter } from './StatCounter';
 import { Countdown } from './Countdown';
+import { LiveBackground } from './LiveBackground';
+import { SihMark } from './SihMark';
 
 interface HeroProps {
   eventName: string;
@@ -38,17 +40,14 @@ export function Hero({
   return (
     <section className="relative overflow-hidden bg-sih-navy">
       <div className="hero-mesh absolute inset-0 animate-gradient-pan opacity-90" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(11,20,55,0.85)_100%)]" />
+      <LiveBackground />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(11,20,55,0.85)_100%)]" />
 
       <div className="relative mx-auto max-w-6xl px-6 py-24 sm:py-32">
         <motion.div initial="hidden" animate="show" className="max-w-3xl">
-          <motion.span
-            variants={fadeUp}
-            custom={0}
-            className="inline-flex items-center gap-2 rounded-full border border-sih-saffron/40 bg-sih-saffron/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-sih-saffron"
-          >
-            Smart India Hackathon · Internal Round
-          </motion.span>
+          <motion.div variants={fadeUp} custom={0}>
+            <SihMark />
+          </motion.div>
 
           <motion.h1
             variants={fadeUp}

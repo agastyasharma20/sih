@@ -27,3 +27,5 @@ shots/
 .e2e.log
 .final.log
 .finalcheck.sh
+.fc.log
+.fc.sh
