@@ -5,8 +5,13 @@ import {
   genderSplit,
   incompleteTeams,
   psDecisionSplit,
+  psPopularity,
+  psCategorySplit,
+  psThemeDemand,
+  psCatalogueSummary,
   type MemberRow,
   type TeamRow,
+  type PsRow,
 } from '@/lib/analytics';
 
 const member = (over: Partial<MemberRow> = {}): MemberRow => ({
@@ -97,5 +102,111 @@ describe('psDecisionSplit', () => {
 
   it('reports nothing decided for an empty round', () => {
     expect(psDecisionSplit([])).toEqual({ decided: 0, tbd: 0 });
+  });
+});
+
+const ps = (over: Partial<PsRow> = {}): PsRow => ({
+  id: 'p1',
+  ps_id: 'SIH1',
+  title: 'Water',
+  category: 'software',
+  theme: 'Clean Water',
+  is_active: true,
+  ...over,
+});
+
+describe('psPopularity', () => {
+  it('ranks by number of teams, most picked first', () => {
+    const statements = [
+      ps({ id: 'a', ps_id: 'SIH1' }),
+      ps({ id: 'b', ps_id: 'SIH2' }),
+      ps({ id: 'c', ps_id: 'SIH3' }),
+    ];
+    const teams = [
+      { tentative_ps_id: 'b' },
+      { tentative_ps_id: 'b' },
+      { tentative_ps_id: 'a' },
+    ];
+    expect(psPopularity(statements, teams).map((r) => [r.ps_id, r.teams])).toEqual([
+      ['SIH2', 2],
+      ['SIH1', 1],
+      ['SIH3', 0],
+    ]);
+  });
+
+  it('keeps statements nobody chose — a zero is the point', () => {
+    const result = psPopularity([ps({ id: 'a' })], []);
+    expect(result).toHaveLength(1);
+    expect(result[0].teams).toBe(0);
+  });
+
+  it('excludes retired statements', () => {
+    const result = psPopularity([ps({ id: 'a' }), ps({ id: 'b', is_active: false })], []);
+    expect(result).toHaveLength(1);
+  });
+
+  it('ignores a team pointing at a statement that no longer exists', () => {
+    const result = psPopularity([ps({ id: 'a' })], [{ tentative_ps_id: 'deleted' }]);
+    expect(result[0].teams).toBe(0);
+  });
+});
+
+describe('psCategorySplit', () => {
+  it('counts what teams chose, not what the catalogue contains', () => {
+    const statements = [
+      ps({ id: 'a', category: 'software' }),
+      ps({ id: 'b', category: 'hardware' }),
+      ps({ id: 'c', category: 'hardware' }),
+    ];
+    const teams = [{ tentative_ps_id: 'a' }, { tentative_ps_id: 'b' }, { tentative_ps_id: null }];
+    expect(psCategorySplit(statements, teams)).toEqual([
+      { name: 'Software', value: 1 },
+      { name: 'Hardware', value: 1 },
+    ]);
+  });
+});
+
+describe('psThemeDemand', () => {
+  it('aggregates chosen statements by theme', () => {
+    const statements = [
+      ps({ id: 'a', theme: 'Clean Water' }),
+      ps({ id: 'b', theme: 'MedTech' }),
+      ps({ id: 'c', theme: 'MedTech' }),
+    ];
+    const teams = [{ tentative_ps_id: 'b' }, { tentative_ps_id: 'c' }, { tentative_ps_id: 'a' }];
+    expect(psThemeDemand(statements, teams)).toEqual([
+      { name: 'MedTech', value: 2 },
+      { name: 'Clean Water', value: 1 },
+    ]);
+  });
+
+  it('buckets a missing theme rather than dropping the team', () => {
+    const result = psThemeDemand([ps({ id: 'a', theme: null })], [{ tentative_ps_id: 'a' }]);
+    expect(result).toEqual([{ name: 'Unspecified', value: 1 }]);
+  });
+});
+
+describe('psCatalogueSummary', () => {
+  it('separates active from retired and counts distinct themes', () => {
+    const statements = [
+      ps({ id: 'a', category: 'software', theme: 'Clean Water' }),
+      ps({ id: 'b', category: 'hardware', theme: 'MedTech' }),
+      ps({ id: 'c', category: 'hardware', theme: 'MedTech' }),
+      ps({ id: 'd', is_active: false }),
+    ];
+    expect(psCatalogueSummary(statements)).toEqual({
+      total: 4,
+      active: 3,
+      retired: 1,
+      software: 1,
+      hardware: 2,
+      themes: 2,
+    });
+  });
+
+  it('reports zeroes for an empty catalogue', () => {
+    expect(psCatalogueSummary([])).toEqual({
+      total: 0, active: 0, retired: 0, software: 0, hardware: 0, themes: 0,
+    });
   });
 });

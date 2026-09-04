@@ -132,3 +132,88 @@ export function toCsv(headers: string[], rows: Array<Array<string | number | nul
 
   return `﻿${lines.join('\r\n')}\r\n`;
 }
+
+/**
+ * Maps the column names real exports use onto the ones we store.
+ *
+ * The official SIH listing calls things "PS Number" and "Problem
+ * Statement Title"; a spreadsheet someone has retyped might say "ps id"
+ * or "problem_statement". Rather than make people rename columns before
+ * importing, accept the shapes that actually turn up.
+ */
+const HEADER_ALIASES: Record<string, string> = {
+  // ps_id
+  ps_id: 'ps_id',
+  ps_no: 'ps_id',
+  ps_number: 'ps_id',
+  ps_code: 'ps_id',
+  psid: 'ps_id',
+  problem_statement_id: 'ps_id',
+  problem_statement_no: 'ps_id',
+  problem_statement_number: 'ps_id',
+  problem_statement_code: 'ps_id',
+  // Deliberately NOT s_no / sr_no / serial: those are row counters, and
+  // mapping them here would beat the real PS number on any sheet that
+  // carries both.
+  // title
+  title: 'title',
+  problem_statement_title: 'title',
+  problem_statement: 'title',
+  ps_title: 'title',
+  name: 'title',
+  // category
+  category: 'category',
+  ps_category: 'category',
+  type: 'category',
+  // theme
+  theme: 'theme',
+  ps_theme: 'theme',
+  theme_name: 'theme',
+  domain_bucket: 'theme',
+  // description
+  description: 'description',
+  problem_description: 'description',
+  ps_description: 'description',
+  details: 'description',
+  // organisation
+  organisation: 'organisation',
+  organization: 'organisation',
+  ministry: 'organisation',
+  department: 'organisation',
+  organisation_name: 'organisation',
+  organization_name: 'organisation',
+};
+
+/** Normalises one header cell to a comparable key. */
+export function normaliseHeader(header: string): string {
+  return header
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+/**
+ * Parses a problem-statement export, mapping recognised column names on
+ * to our own. Unrecognised columns are kept under their normalised name
+ * so nothing is silently lost.
+ */
+export function parseProblemStatements(input: string): Row[] {
+  const rows = parseDelimited(input);
+  if (rows.length < 2) return [];
+
+  const headers = rows[0].map((header) => {
+    const key = normaliseHeader(header);
+    return HEADER_ALIASES[key] ?? key;
+  });
+
+  return rows.slice(1).map((cells) => {
+    const record: Row = {};
+    headers.forEach((header, index) => {
+      // First column wins when two map to the same field, so a sheet with
+      // both "S.No" and "PS Number" keeps the meaningful one.
+      if (header && !record[header]) record[header] = (cells[index] ?? '').trim();
+    });
+    return record;
+  });
+}

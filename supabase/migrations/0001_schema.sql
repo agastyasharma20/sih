@@ -157,11 +157,21 @@ create index if not exists problem_statements_active_idx on public.problem_state
 
 -- members.tentative_ps_id is declared above but problem_statements is
 -- created after it; attach the FK now.
+-- Guarded on the column still existing: migration 0007 moves the
+-- tentative problem statement up to the team and drops this column, so on
+-- a re-run of the full setup there is nothing here to attach a key to.
 do $$ begin
-  alter table public.members
-    add constraint members_tentative_ps_fkey
-    foreign key (tentative_ps_id)
-    references public.problem_statements (id) on delete set null;
+  if exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'members'
+       and column_name = 'tentative_ps_id'
+  ) then
+    alter table public.members
+      add constraint members_tentative_ps_fkey
+      foreign key (tentative_ps_id)
+      references public.problem_statements (id) on delete set null;
+  end if;
 exception when duplicate_object then null;
 end $$;
 

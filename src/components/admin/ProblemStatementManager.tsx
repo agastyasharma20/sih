@@ -6,9 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Upload, Plus, CheckCircle2, AlertTriangle } from 'lucide-react';
 import type { ProblemStatement } from '@/lib/types';
 
-const SAMPLE = `ps_id,title,category,theme,description
-SIH1234,Smart water quality monitoring,software,Clean Water,Real-time monitoring of water bodies
-SIH1601,Assistive device for the visually impaired,hardware,MedTech,Wearable navigation aid`;
+const SAMPLE = `PS Number,Problem Statement Title,Category,Theme,Organization
+SIH25001,Smart water quality monitoring,Software,Clean Water,Ministry of Jal Shakti
+SIH25042,Assistive device for the visually impaired,Hardware,MedTech,Ministry of Social Justice`;
 
 interface ImportResult {
   imported: number;
@@ -102,13 +102,13 @@ export function ProblemStatementManager({
                 Paste CSV or spreadsheet rows
               </label>
               <p className="mb-2 text-xs text-slate-500">
-                A header row is required. Recognised columns:{' '}
-                <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">ps_id</code>,{' '}
-                <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">title</code>,{' '}
-                <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">category</code>,{' '}
-                <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">theme</code>,{' '}
-                <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">description</code>.
-                Existing rows with the same ps_id are updated, not duplicated.
+                Paste the official SIH list straight from the spreadsheet — its own column
+                names are understood, so nothing needs renaming. A header row is required, and{' '}
+                <strong>PS Number</strong>, <strong>Problem Statement Title</strong> and{' '}
+                <strong>Category</strong> must be present. <strong>Theme</strong>,{' '}
+                <strong>Organization</strong> and <strong>Description</strong> are optional but
+                power the analytics. Rows with a PS number you already have are updated, not
+                duplicated, so re-importing a corrected sheet is safe.
               </p>
               <textarea
                 id="ps-import"

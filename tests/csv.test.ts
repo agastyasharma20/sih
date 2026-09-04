@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { parseDelimited, parseDelimitedRows, toCsv } from '@/lib/csv';
+import {
+  parseDelimited,
+  parseDelimitedRows,
+  toCsv,
+  parseProblemStatements,
+  normaliseHeader,
+} from '@/lib/csv';
 
 describe('parseDelimited', () => {
   it('parses plain comma-separated rows', () => {
@@ -78,5 +84,66 @@ describe('toCsv', () => {
 
   it('renders null as an empty cell', () => {
     expect(toCsv(['a'], [[null]])).toContain('\r\n\r\n');
+  });
+});
+
+describe('parseProblemStatements', () => {
+  it('accepts the column names the official SIH export uses', () => {
+    const rows = parseProblemStatements(
+      'PS Number,Problem Statement Title,Category,Theme,Organization\n' +
+        'SIH25001,Smart water monitoring,Software,Clean Water,Ministry of Jal Shakti',
+    );
+    expect(rows[0]).toEqual({
+      ps_id: 'SIH25001',
+      title: 'Smart water monitoring',
+      category: 'Software',
+      theme: 'Clean Water',
+      organisation: 'Ministry of Jal Shakti',
+    });
+  });
+
+  it('accepts our own plain column names too', () => {
+    const rows = parseProblemStatements('ps_id,title,category\nSIH1,Water,software');
+    expect(rows[0].ps_id).toBe('SIH1');
+    expect(rows[0].title).toBe('Water');
+  });
+
+  it('does not mistake a serial number column for the PS ID', () => {
+    const rows = parseProblemStatements(
+      'S.No,PS Number,Problem Statement Title,Category\n' +
+        '1,SIH25042,Assistive device,Hardware',
+    );
+    expect(rows[0].ps_id).toBe('SIH25042');
+    expect(rows[0].s_no).toBe('1');
+  });
+
+  it('keeps unrecognised columns rather than dropping them', () => {
+    const rows = parseProblemStatements(
+      'ps_id,title,category,Youth Innovation\nSIH1,Water,software,Yes',
+    );
+    expect(rows[0].youth_innovation).toBe('Yes');
+  });
+
+  it('handles a tab-separated paste straight out of a spreadsheet', () => {
+    const rows = parseProblemStatements(
+      'PS Number\tProblem Statement Title\tCategory\nSIH1\tWater quality\tSoftware',
+    );
+    expect(rows[0]).toEqual({ ps_id: 'SIH1', title: 'Water quality', category: 'Software' });
+  });
+
+  it('survives a title containing a comma', () => {
+    const rows = parseProblemStatements(
+      'PS Number,Problem Statement Title,Category\n' +
+        'SIH1,"Monitoring of rivers, lakes and ponds",Software',
+    );
+    expect(rows[0].title).toBe('Monitoring of rivers, lakes and ponds');
+  });
+});
+
+describe('normaliseHeader', () => {
+  it('collapses punctuation and case', () => {
+    expect(normaliseHeader('  PS Number ')).toBe('ps_number');
+    expect(normaliseHeader('Problem Statement Title')).toBe('problem_statement_title');
+    expect(normaliseHeader('S.No.')).toBe('s_no');
   });
 });

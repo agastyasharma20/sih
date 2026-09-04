@@ -96,3 +96,106 @@ export function psDecisionSplit(teams: TeamRow[]): { decided: number; tbd: numbe
   const decided = teams.filter((team) => Boolean(team.tentative_ps_id)).length;
   return { decided, tbd: teams.length - decided };
 }
+
+/** A problem statement plus how many teams have picked it. */
+export interface PsRow {
+  id: string;
+  ps_id: string;
+  title: string;
+  category: 'software' | 'hardware';
+  theme: string | null;
+  organisation?: string | null;
+  is_active: boolean;
+}
+
+export interface PsPopularity {
+  ps_id: string;
+  title: string;
+  category: 'software' | 'hardware';
+  theme: string | null;
+  teams: number;
+}
+
+/**
+ * Problem-statement demand, most-picked first.
+ *
+ * Counts every active statement, including the ones nobody chose —
+ * a zero is the useful signal here, since it tells the SPOC which
+ * statements to promote before registration closes.
+ */
+export function psPopularity(
+  statements: PsRow[],
+  teams: Array<{ tentative_ps_id?: string | null }>,
+): PsPopularity[] {
+  const counts = new Map<string, number>();
+
+  for (const team of teams) {
+    if (team.tentative_ps_id) {
+      counts.set(team.tentative_ps_id, (counts.get(team.tentative_ps_id) ?? 0) + 1);
+    }
+  }
+
+  return statements
+    .filter((ps) => ps.is_active)
+    .map((ps) => ({
+      ps_id: ps.ps_id,
+      title: ps.title,
+      category: ps.category,
+      theme: ps.theme,
+      teams: counts.get(ps.id) ?? 0,
+    }))
+    .sort((a, b) => b.teams - a.teams || a.ps_id.localeCompare(b.ps_id));
+}
+
+/** Software vs hardware split of what teams actually chose. */
+export function psCategorySplit(
+  statements: PsRow[],
+  teams: Array<{ tentative_ps_id?: string | null }>,
+): Slice[] {
+  const byId = new Map(statements.map((ps) => [ps.id, ps]));
+  const counts = { software: 0, hardware: 0 };
+
+  for (const team of teams) {
+    const ps = team.tentative_ps_id ? byId.get(team.tentative_ps_id) : undefined;
+    if (ps) counts[ps.category] += 1;
+  }
+
+  return [
+    { name: 'Software', value: counts.software },
+    { name: 'Hardware', value: counts.hardware },
+  ];
+}
+
+/** Demand per theme, for the themes teams have actually chosen. */
+export function psThemeDemand(
+  statements: PsRow[],
+  teams: Array<{ tentative_ps_id?: string | null }>,
+): Slice[] {
+  const byId = new Map(statements.map((ps) => [ps.id, ps]));
+  const counts = new Map<string, number>();
+
+  for (const team of teams) {
+    const ps = team.tentative_ps_id ? byId.get(team.tentative_ps_id) : undefined;
+    if (!ps) continue;
+    const theme = ps.theme || 'Unspecified';
+    counts.set(theme, (counts.get(theme) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+}
+
+/** Headline numbers about the catalogue itself. */
+export function psCatalogueSummary(statements: PsRow[]) {
+  const active = statements.filter((ps) => ps.is_active);
+
+  return {
+    total: statements.length,
+    active: active.length,
+    retired: statements.length - active.length,
+    software: active.filter((ps) => ps.category === 'software').length,
+    hardware: active.filter((ps) => ps.category === 'hardware').length,
+    themes: new Set(active.map((ps) => ps.theme).filter(Boolean)).size,
+  };
+}

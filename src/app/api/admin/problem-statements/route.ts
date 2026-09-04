@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getSessionProfile, isSpoc } from '@/lib/auth';
-import { parseDelimitedRows } from '@/lib/csv';
+import { parseProblemStatements } from '@/lib/csv';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +21,7 @@ const psSchema = z.object({
   category: z.enum(['software', 'hardware']),
   theme: z.string().trim().max(120).optional().nullable(),
   description: z.string().trim().max(4000).optional().nullable(),
+  organisation: z.string().trim().max(200).optional().nullable(),
   is_active: z.boolean().default(true),
 });
 
@@ -73,6 +74,7 @@ export async function POST(request: Request) {
           ...statement,
           theme: statement.theme || null,
           description: statement.description || null,
+          organisation: statement.organisation || null,
         },
         { onConflict: 'ps_id' },
       );
@@ -95,7 +97,7 @@ export async function POST(request: Request) {
   }
 
   // --------------------------------------------------------------- bulk
-  const rows = parseDelimitedRows(parsed.data.text);
+  const rows = parseProblemStatements(parsed.data.text);
 
   if (rows.length === 0) {
     return NextResponse.json(
@@ -125,7 +127,10 @@ export async function POST(request: Request) {
     const category = normaliseCategory(row.category ?? '');
 
     if (!row.ps_id) {
-      skipped.push({ row: line, reason: 'missing ps_id' });
+      skipped.push({
+        row: line,
+        reason: 'no PS number — expected a column named ps_id, PS Number or PS Code',
+      });
       return;
     }
     if (!row.title) {
@@ -146,6 +151,7 @@ export async function POST(request: Request) {
       category,
       theme: row.theme || null,
       description: row.description || null,
+      organisation: row.organisation || null,
       is_active: true,
     });
 
