@@ -38,18 +38,12 @@ npm install
 cp .env.example .env.local     # fill in your Supabase project values
 ```
 
-Apply the migrations to your Supabase project, in order:
+Set up the database: copy the **contents** of `supabase/SETUP_ALL.sql`
+into the Supabase SQL Editor and press Run. That single file contains
+every migration in the correct order.
 
-```
-supabase/migrations/0001_schema.sql      tables, enums, constraints
-supabase/migrations/0002_rls.sql         row-level security policies
-supabase/migrations/0003_functions.sql   registration RPCs, auth trigger
-supabase/migrations/0004_seed.sql        settings defaults, marking rubric
-supabase/migrations/0005_grants.sql      role grants, public counters
-```
-
-Either paste them into the Supabase SQL editor in order, or run
-`supabase db push` if you use the Supabase CLI.
+(The individual files live in `supabase/migrations/` if you would rather
+run them one at a time, or use `supabase db push` with the CLI.)
 
 Then seed the super-admin (once per environment) and start the app:
 

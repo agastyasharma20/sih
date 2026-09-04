@@ -48,41 +48,60 @@ about 750 monthly users against 50,000, and no storage at all.
 
 ---
 
-## 2. Apply the database migrations
+## 2. Set up the database
 
-Open **SQL Editor** in the Supabase dashboard. Run each file from
-`supabase/migrations/` **in numerical order**, one at a time, waiting for
-each to succeed:
+Open **SQL Editor** in the Supabase dashboard, click **New query**, then:
+
+1. Open **[`supabase/SETUP_ALL.sql`](supabase/SETUP_ALL.sql)** in this repo.
+2. Click the **Raw** button on GitHub, select all (Ctrl+A), copy (Ctrl+C).
+3. Paste the whole thing into the SQL Editor and press **Run** (Ctrl+Enter).
+
+That one file contains every migration in the right order, so there is
+nothing to sequence by hand. It takes a few seconds.
+
+> **Paste the file's contents, not its name.** The editor needs the SQL
+> itself — several hundred lines starting with
+> `create extension if not exists "pgcrypto";`. If you see
+> `ERROR: 42601: trailing junk after numeric literal`, you have pasted a
+> filename or a line from a table in this guide instead of the SQL.
+
+**Verify it worked.** In a new query, run:
+
+```sql
+select count(*) from public.settings;          -- expect 14
+select count(*) from public.marking_criteria;  -- expect 5
+select count(*) from pg_policies where schemaname = 'public';  -- expect 40
+```
+
+If any of those come back wrong, something did not run. Scroll up in the
+SQL Editor output for the first red error and fix that one — later
+statements depend on earlier ones.
+
+<details>
+<summary>Prefer to run the migrations separately?</summary>
+
+The individual files in `supabase/migrations/` must be run **in numerical
+order**, one at a time, waiting for each to succeed:
 
 ```
-0001_schema.sql            tables, enums, constraints
-0002_rls.sql               row-level security policies
-0003_functions.sql         registration RPCs, auth trigger
-0004_seed.sql              settings defaults, marking rubric
-0005_grants.sql            role grants, public counters
-0006_submissions_judging.sql  submissions, judging, results, storage
+0001_schema.sql               tables, enums, constraints
+0002_rls.sql                  row-level security policies
+0003_functions.sql            registration RPCs, auth trigger
+0004_seed.sql                 settings defaults, marking rubric
+0005_grants.sql               role grants, public counters
+0006_submissions_judging.sql  submissions, judging, results
 ```
 
-Order matters — later files depend on earlier ones. If a file errors,
-**stop and fix it** rather than continuing.
-
-Prefer the CLI? With the [Supabase CLI](https://supabase.com/docs/guides/cli)
-installed:
+Or, with the [Supabase CLI](https://supabase.com/docs/guides/cli):
 
 ```bash
 supabase link --project-ref <your-project-ref>
 supabase db push
 ```
 
-**Verify it worked.** In the SQL Editor:
+`SETUP_ALL.sql` is generated from these files, so the two are equivalent.
 
-```sql
-select count(*) from public.settings;         -- expect 14
-select count(*) from public.marking_criteria; -- expect 5
-select count(*) from pg_proc where proname = 'register_team';  -- expect 1
-```
-
----
+</details>
 
 ## 3. Collect your keys
 
