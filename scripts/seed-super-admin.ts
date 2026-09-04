@@ -17,7 +17,9 @@ config({ path: '.env.local' });
 config();
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Supabase renamed service_role to the secret key (sb_secret_…); accept both.
+const serviceKey =
+  process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const email = process.env.SUPER_ADMIN_EMAIL;
 const password = process.env.SUPER_ADMIN_PASSWORD;
 
@@ -26,7 +28,9 @@ function fail(message: string): never {
   process.exit(1);
 }
 
-if (!url || !serviceKey) fail('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.');
+if (!url || !serviceKey) {
+  fail('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY must be set.');
+}
 if (!email || !password) fail('SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD must be set.');
 if (password.length < 16) fail('SUPER_ADMIN_PASSWORD must be at least 16 characters.');
 

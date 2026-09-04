@@ -117,15 +117,27 @@ supabase db push
 
 ## 3. Collect your keys
 
-**Project Settings → API**:
+**Project Settings → API Keys.**
 
-| Key | Where it goes | Secret? |
+Supabase renamed these in 2025, and projects created from November 2025
+onwards only have the new form. You will see:
+
+| In the dashboard | Environment variable | Secret? |
 |---|---|---|
-| Project URL | `NEXT_PUBLIC_SUPABASE_URL` | No |
-| `anon` / `public` key | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No — safe in the browser, RLS protects the data |
-| `service_role` key | `SUPABASE_SERVICE_ROLE_KEY` | **Yes.** Bypasses all security. Server only. Never commit it, never put it in a `NEXT_PUBLIC_` variable |
+| Project URL (Settings → General / Data API) | `NEXT_PUBLIC_SUPABASE_URL` | No |
+| **Publishable key** — `sb_publishable_…` | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | No — safe in the browser, RLS gates every query |
+| **Secret key** — `sb_secret_…` | `SUPABASE_SECRET_KEY` | **Yes.** Carries BYPASSRLS: it ignores every policy you just installed |
 
----
+Older projects that still show `anon` and `service_role` work too — the
+app accepts `NEXT_PUBLIC_SUPABASE_ANON_KEY` and
+`SUPABASE_SERVICE_ROLE_KEY` as fallbacks.
+
+**About the secret key.** It bypasses all 40 policies, so it belongs only
+in Vercel's server-side environment variables. Never prefix it with
+`NEXT_PUBLIC_`, never commit it, and do not paste it into a screenshot or
+a chat. If it is ever exposed, rotate it immediately from this same page.
+(Supabase now rejects secret keys sent from a browser by inspecting the
+User-Agent, but do not rely on that.)
 
 ## 4. Configure auth
 
@@ -177,11 +189,11 @@ built-in mailer will rate-limit.
 3. Expand **Environment Variables** and add all five:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL       https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY  eyJhbGci...
-SUPABASE_SERVICE_ROLE_KEY      eyJhbGci...
-RESEND_API_KEY                 re_...
-EMAIL_FROM                     PIEMR Hackathon <hackathon@piemr.edu.in>
+NEXT_PUBLIC_SUPABASE_URL              https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY  sb_publishable_...
+SUPABASE_SECRET_KEY                   sb_secret_...
+RESEND_API_KEY                        re_...
+EMAIL_FROM                            PIEMR Hackathon <hackathon@piemr.edu.in>
 ```
 
 4. **Deploy**. First build takes 2–3 minutes.
@@ -205,8 +217,8 @@ npm install
 
 cat > .env.local <<'ENV'
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
 ENV
 
 SUPER_ADMIN_EMAIL=you@piemr.edu.in \
@@ -333,9 +345,10 @@ first. Drafts save without one.
 
 ## Security notes for whoever runs this
 
-- The `service_role` key bypasses every security policy. It belongs only
-  in Vercel's server-side environment variables. If it leaks, rotate it
-  immediately in Supabase → Settings → API.
+- The secret key (`sb_secret_…`, formerly `service_role`) bypasses every
+  security policy. It belongs only in Vercel's server-side environment
+  variables. If it leaks, rotate it immediately in Supabase → Project
+  Settings → API Keys.
 - The super-admin tier is invisible by design: it is filtered out of the
   account list admins see, by a database policy rather than by hiding a
   row in the UI.
