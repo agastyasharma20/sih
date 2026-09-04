@@ -17,3 +17,7 @@ dev*.log
 probe*.sh
 probe-results.txt
 .devprobe.log
+shots/
+*.orig
+.shoot*.mjs
+.build.log

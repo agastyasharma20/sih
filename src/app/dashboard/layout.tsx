@@ -19,6 +19,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       { href: '/dashboard/admin', label: 'Overview' },
       { href: '/dashboard/admin/teams', label: 'Teams' },
       { href: '/dashboard/admin/analytics', label: 'Analytics' },
+      { href: '/dashboard/admin/results', label: 'Results' },
     );
     // Operational screens belong to the SPOC; a Sr. Director is read-heavy.
     if (isSpoc(profile)) {
@@ -33,7 +34,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   } else if (profile.role === 'judge') {
     links.push({ href: '/dashboard/judge', label: 'Judging' });
   } else {
-    links.push({ href: '/dashboard/team', label: 'My team' });
+    links.push(
+      { href: '/dashboard/team', label: 'My team' },
+      { href: '/dashboard/team/submit', label: 'Submit idea' },
+    );
   }
 
   return (

@@ -14,6 +14,9 @@ const DATE_KEYS = [
 const TOGGLE_KEYS = [
   ['registration_open', 'Team registration is open'],
   ['ps_list_published', 'Problem statement list is published'],
+  ['submissions_open', 'Idea submissions are open'],
+  ['judging_open', 'Judges can record scores'],
+  ['results_published', 'Public results page is live'],
 ] as const;
 
 function asDateValue(value: unknown): string {

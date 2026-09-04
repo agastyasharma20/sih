@@ -70,6 +70,12 @@ export default async function LandingPage() {
             >
               Problem statements
             </Link>
+            <Link
+              href="/results"
+              className="hidden text-sm font-medium text-slate-200 hover:text-white sm:block"
+            >
+              Results
+            </Link>
             {profile ? (
               <Link href={dashboardPathFor(profile.role)} className="btn-primary">
                 Dashboard

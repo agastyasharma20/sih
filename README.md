@@ -4,11 +4,13 @@ Registration, judging and results portal for the internal hackathon that
 selects Prestige Institute of Engineering Management & Research (Indore)
 teams for the Smart India Hackathon.
 
-**Module 1 (Team Registration) is complete end-to-end**, along with the
-operational tooling needed to actually run the round: problem-statement
-import, roster export, registration locking, analytics, and the audit
-trail. Modules 2–4 are specified and their tables, roles and policies
-already exist, so switching them on needs no data migration.
+**All five modules are built**: team registration, idea submission with
+file uploads, judge scoring against an editable rubric, results
+publishing, and problem-statement management with analytics. Each stage
+is gated by a switch an admin controls, so the round opens and closes
+without a deploy.
+
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** to put it online.
 
 ---
 
@@ -278,15 +280,31 @@ These are open in the spec and deliberately not baked in:
 
 ---
 
-## Roadmap
+## Modules 2-4
 
-- **Module 2** — admin-built idea and prototype submission forms, up to
-  two ideas per team (`submissions.idea_slot`).
-- **Module 3** — judges enter a Team ID, score against
-  `marking_criteria`, leave per-criterion remarks.
-- **Module 4** — results publishing; leads see their own verdict once
-  `results.is_published` is set.
-- **Module 5** — PS bulk import and registration analytics are **done**.
-  Still to come once judging exists: PS popularity, judge scoring spread
-  (to flag outlier judges), and the full registered → submitted →
-  selected funnel.
+**Submission** (`/dashboard/team/submit`). Up to two ideas per team, each
+against a different problem statement — the second slot cannot reuse the
+first's. Presentations and architecture diagrams upload straight from the
+browser to Supabase Storage, into a folder scoped to the team by bucket
+policy, and judges get time-limited signed links. Drafts save without a
+problem statement; finalising requires one, and once finalised a later
+draft save cannot clear the submitted timestamp.
+
+**Judging** (`/dashboard/judge`). A judge types the 3-digit Team ID,
+reviews the artefacts, and scores each criterion with optional remarks.
+`judge_lookup_team()` is SECURITY DEFINER and returns exactly one team's
+submission summary, so a judge cannot enumerate the field. Marks are
+validated against each criterion's own maximum in the database.
+
+**Results** (`/dashboard/admin/results`, `/results`). Submissions ranked
+by average marks across judges, via the `submission_scores` view — which
+is `security_invoker`, so a coordinator opening it sees nothing. An admin
+sets a verdict and publishes it per team; the team lead then sees their
+own verdict and nobody else's. The public page lists selected teams and
+never marks.
+
+## Still to come
+
+Once the first round has run: problem-statement popularity, judge scoring
+spread to flag outlier judges, and the full registered → submitted →
+selected funnel.

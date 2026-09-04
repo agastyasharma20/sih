@@ -20,6 +20,15 @@ export default async function TeamDashboard() {
     .eq('created_by', profile.id)
     .maybeSingle();
 
+  // RLS returns a row here only when the team owns it AND it is published.
+  const { data: publishedResults } = team
+    ? await supabase
+        .from('results')
+        .select('idea_slot, final_verdict')
+        .eq('team_id', team.id)
+        .eq('is_published', true)
+    : { data: null };
+
   const [{ data: settingsRows }, { data: psRows }] = await Promise.all([
     supabase.from('settings').select('key, value'),
     supabase
@@ -102,6 +111,33 @@ export default async function TeamDashboard() {
 
   return (
     <div className="space-y-8">
+      {(publishedResults ?? []).length > 0 && (
+        <div className="space-y-3">
+          {(publishedResults ?? []).map((result) => (
+            <div
+              key={result.idea_slot}
+              className={
+                result.final_verdict === 'selected'
+                  ? 'rounded-xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/40'
+                  : result.final_verdict === 'waitlisted'
+                    ? 'rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/40'
+                    : 'rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900'
+              }
+            >
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Result — idea {result.idea_slot}
+              </p>
+              <p className="mt-1 text-2xl font-black capitalize">{result.final_verdict}</p>
+              {result.final_verdict === 'selected' && (
+                <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">
+                  Congratulations — your team represents PIEMR at the Smart India Hackathon.
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-6 rounded-2xl bg-gradient-to-r from-piemr-700 to-sih-navy p-6 text-white">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-piemr-200">

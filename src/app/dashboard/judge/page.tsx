@@ -2,32 +2,46 @@ import { requireRole } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { SIH_SITE } from '@/lib/constants';
 import { ExternalLink } from 'lucide-react';
+import { JudgeConsole } from '@/components/judge/JudgeConsole';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Judging · PIEMR Hackathon' };
 
-/** Module 3 lands here. The rubric below is live from the database, so
- *  what a judge sees always matches what an admin has configured. */
+/** Module 3. A judge types the team's 3-digit ID, reviews the artefacts,
+ *  and scores against the criteria an admin configured. */
 export default async function JudgeDashboard() {
   await requireRole('judge');
   const supabase = createClient();
 
-  const { data: criteria } = await supabase
-    .from('marking_criteria')
-    .select('id, name, description, max_marks')
-    .eq('is_active', true)
-    .order('display_order');
+  const [{ data: criteria }, { data: settingRow }] = await Promise.all([
+    supabase
+      .from('marking_criteria')
+      .select('id, name, description, max_marks')
+      .eq('is_active', true)
+      .order('display_order'),
+    supabase.from('settings').select('value').eq('key', 'judging_open').maybeSingle(),
+  ]);
 
-  const total = (criteria ?? []).reduce((sum, c) => sum + Number(c.max_marks), 0);
+  const judgingOpen = settingRow?.value === true;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Judging</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          At the presentation you will enter a team&apos;s 3-digit Team ID to pull up their
-          submission and score it against the rubric below.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Judging</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Enter a team&apos;s 3-digit ID to pull up their submission and score it.
+          </p>
+        </div>
+        <span
+          className={
+            judgingOpen
+              ? 'badge bg-emerald-100 px-3 py-1 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+              : 'badge bg-slate-200 px-3 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+          }
+        >
+          Judging {judgingOpen ? 'open' : 'closed'}
+        </span>
       </div>
 
       <a
@@ -43,37 +57,10 @@ export default async function JudgeDashboard() {
         <ExternalLink className="h-4 w-4 shrink-0 text-sih-saffron" />
       </a>
 
-      <div className="card">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Marking criteria</h2>
-          <span className="badge bg-piemr-100 text-piemr-800 dark:bg-piemr-950 dark:text-piemr-300">
-            {total} marks total
-          </span>
-        </div>
-
-        <ul className="mt-4 divide-y divide-slate-200 dark:divide-slate-800">
-          {(criteria ?? []).map((criterion) => (
-            <li key={criterion.id} className="flex items-start justify-between gap-6 py-3">
-              <div>
-                <p className="font-medium">{criterion.name}</p>
-                {criterion.description && (
-                  <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
-                    {criterion.description}
-                  </p>
-                )}
-              </div>
-              <span className="shrink-0 font-mono text-sm font-semibold">
-                / {criterion.max_marks}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        <p className="mt-4 text-xs text-slate-500">
-          Scoring opens once submissions close (Module 3). Remarks are recorded per criterion
-          alongside the marks.
-        </p>
-      </div>
+      <JudgeConsole
+        criteria={(criteria ?? []).map((c) => ({ ...c, max_marks: Number(c.max_marks) }))}
+        judgingOpen={judgingOpen}
+      />
     </div>
   );
 }

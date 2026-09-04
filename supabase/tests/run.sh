@@ -62,4 +62,7 @@ psql -q -d piemr -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/20_rls.sql"
 echo "--- Admin operations"
 psql -q -d piemr -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/30_admin_ops.sql"
 
+echo "--- Submissions, judging and results"
+psql -q -d piemr -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/40_judging.sql"
+
 echo "--- done"
