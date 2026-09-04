@@ -36,7 +36,8 @@ on conflict (key) do nothing;
 -- edit, remove or reweight these at any time from settings — verify
 -- against the current edition's official judging sheet before the event.
 -- ---------------------------------------------------------------------
-insert into public.marking_criteria (name, description, max_marks, display_order) values
+insert into public.marking_criteria (name, description, max_marks, display_order)
+select * from (values
   ('Problem Understanding & Relevance',
    'Grasp of the chosen problem statement and the significance of solving it.', 20, 1),
   ('Innovation & Novelty',
@@ -47,4 +48,7 @@ insert into public.marking_criteria (name, description, max_marks, display_order
    'Structure, clarity and confidence of the pitch and supporting material.', 20, 4),
   ('Execution & Prototype Readiness',
    'How much of the solution is actually working and demonstrable.', 20, 5)
-on conflict do nothing;
+) as seed(name, description, max_marks, display_order)
+-- Seeded once. Re-running must not duplicate the rubric, and there is no
+-- unique key on name, so guard on the table being empty instead.
+where not exists (select 1 from public.marking_criteria);

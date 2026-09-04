@@ -2,11 +2,12 @@
 -- PIEMR Hackathon Platform — complete database setup
 --
 -- Paste this ENTIRE file into the Supabase SQL Editor and press Run.
--- It contains migrations 0001-0006 concatenated in the correct order,
--- so there is nothing to sequence by hand.
+-- It contains migrations 0001-0006 in the correct order, so there is
+-- nothing to sequence by hand.
 --
--- Safe to run on a brand-new project. Running it twice will error on
--- the CREATE TYPE statements — that is expected; it is a one-time setup.
+-- Safe to run more than once. Every statement is idempotent: existing
+-- objects are left alone and missing ones are created, so if a previous
+-- run failed part-way you can simply run this again.
 -- =====================================================================
 
 
@@ -24,30 +25,51 @@
 create extension if not exists "pgcrypto";
 
 -- ---------------------------------------------------------------- enums
-create type public.app_role as enum (
-  'super_admin',
-  'admin',
-  'coordinator',
-  'team_lead',
-  'judge'
-);
+do $$ begin
+  create type public.app_role as enum (
+    'super_admin',
+    'admin',
+    'coordinator',
+    'team_lead',
+    'judge'
+  );
+exception when duplicate_object then null;
+end $$;
 
-create type public.admin_subtype as enum ('spoc', 'director');
+do $$ begin
+  create type public.admin_subtype as enum ('spoc', 'director');
+exception when duplicate_object then null;
+end $$;
 
-create type public.team_status as enum ('draft', 'submitted', 'selected', 'rejected');
+do $$ begin
+  create type public.team_status as enum ('draft', 'submitted', 'selected', 'rejected');
+exception when duplicate_object then null;
+end $$;
 
-create type public.ps_category as enum ('software', 'hardware');
+do $$ begin
+  create type public.ps_category as enum ('software', 'hardware');
+exception when duplicate_object then null;
+end $$;
 
-create type public.mentor_type as enum ('primary', 'secondary');
+do $$ begin
+  create type public.mentor_type as enum ('primary', 'secondary');
+exception when duplicate_object then null;
+end $$;
 
-create type public.mentor_affiliation as enum ('piemr', 'industry');
+do $$ begin
+  create type public.mentor_affiliation as enum ('piemr', 'industry');
+exception when duplicate_object then null;
+end $$;
 
-create type public.final_verdict as enum ('selected', 'waitlisted', 'rejected');
+do $$ begin
+  create type public.final_verdict as enum ('selected', 'waitlisted', 'rejected');
+exception when duplicate_object then null;
+end $$;
 
 -- ---------------------------------------------------------------- users
 -- Password hashes live in auth.users (Supabase Auth). This table carries
 -- authorization state only.
-create table public.users (
+create table if not exists public.users (
   id            uuid primary key references auth.users (id) on delete cascade,
   email         text not null unique,
   full_name     text,
@@ -61,14 +83,14 @@ create table public.users (
     check (admin_subtype is null or role = 'admin')
 );
 
-create index users_role_idx on public.users (role);
+create index if not exists users_role_idx on public.users (role);
 
 -- ---------------------------------------------------------------- teams
 -- team_id_short is the zero-padded 3-digit ID judges type in at
 -- presentation time. Allocated from a sequence, 001-999.
-create sequence public.team_short_id_seq as integer minvalue 1 maxvalue 999;
+create sequence if not exists public.team_short_id_seq as integer minvalue 1 maxvalue 999;
 
-create table public.teams (
+create table if not exists public.teams (
   id                    uuid primary key default gen_random_uuid(),
   team_id_short         text not null unique
                           check (team_id_short ~ '^[0-9]{3}$'),
@@ -80,13 +102,13 @@ create table public.teams (
   updated_at            timestamptz not null default now()
 );
 
-create index teams_created_by_idx on public.teams (created_by);
-create index teams_status_idx on public.teams (status);
+create index if not exists teams_created_by_idx on public.teams (created_by);
+create index if not exists teams_status_idx on public.teams (status);
 
 -- -------------------------------------------------------------- members
 -- Uniqueness is global, not per-team: a student already registered on one
 -- team cannot appear on another.
-create table public.members (
+create table if not exists public.members (
   id                uuid primary key default gen_random_uuid(),
   team_id           uuid not null references public.teams (id) on delete cascade,
   is_lead           boolean not null default false,
@@ -103,20 +125,20 @@ create table public.members (
 );
 
 -- Case/format-insensitive global uniqueness.
-create unique index members_enrollment_unique
+create unique index if not exists members_enrollment_unique
   on public.members (upper(enrollment_number));
-create unique index members_email_unique
+create unique index if not exists members_email_unique
   on public.members (lower(email));
-create unique index members_phone_unique
+create unique index if not exists members_phone_unique
   on public.members (phone);
-create index members_team_idx on public.members (team_id);
+create index if not exists members_team_idx on public.members (team_id);
 
 -- Exactly one lead per team.
-create unique index members_one_lead_per_team
+create unique index if not exists members_one_lead_per_team
   on public.members (team_id) where is_lead;
 
 -- -------------------------------------------------------------- mentors
-create table public.mentors (
+create table if not exists public.mentors (
   id           uuid primary key default gen_random_uuid(),
   team_id      uuid not null references public.teams (id) on delete cascade,
   type         public.mentor_type not null,
@@ -131,12 +153,12 @@ create table public.mentors (
     check (type <> 'primary' or affiliation = 'piemr')
 );
 
-create unique index mentors_one_per_type_per_team
+create unique index if not exists mentors_one_per_type_per_team
   on public.mentors (team_id, type);
-create index mentors_team_idx on public.mentors (team_id);
+create index if not exists mentors_team_idx on public.mentors (team_id);
 
 -- --------------------------------------------------- problem statements
-create table public.problem_statements (
+create table if not exists public.problem_statements (
   id          uuid primary key default gen_random_uuid(),
   ps_id       text not null unique,
   title       text not null,
@@ -148,18 +170,21 @@ create table public.problem_statements (
   updated_at  timestamptz not null default now()
 );
 
-create index problem_statements_active_idx on public.problem_statements (is_active);
+create index if not exists problem_statements_active_idx on public.problem_statements (is_active);
 
 -- members.tentative_ps_id is declared above but problem_statements is
 -- created after it; attach the FK now.
-alter table public.members
-  add constraint members_tentative_ps_fkey
-  foreign key (tentative_ps_id)
-  references public.problem_statements (id) on delete set null;
+do $$ begin
+  alter table public.members
+    add constraint members_tentative_ps_fkey
+    foreign key (tentative_ps_id)
+    references public.problem_statements (id) on delete set null;
+exception when duplicate_object then null;
+end $$;
 
 -- ------------------------------------------------ team PS selection (M2)
 -- A team may run up to two ideas; each idea slot locks one PS.
-create table public.team_ps_selection (
+create table if not exists public.team_ps_selection (
   id         uuid primary key default gen_random_uuid(),
   team_id    uuid not null references public.teams (id) on delete cascade,
   ps_id      uuid not null references public.problem_statements (id) on delete restrict,
@@ -169,7 +194,7 @@ create table public.team_ps_selection (
 );
 
 -- ---------------------------------------------------- submissions (M2)
-create table public.submissions (
+create table if not exists public.submissions (
   id               uuid primary key default gen_random_uuid(),
   team_id          uuid not null references public.teams (id) on delete cascade,
   idea_slot        smallint not null check (idea_slot in (1, 2)),
@@ -184,7 +209,7 @@ create table public.submissions (
 );
 
 -- ------------------------------------------------ marking criteria (M3)
-create table public.marking_criteria (
+create table if not exists public.marking_criteria (
   id            uuid primary key default gen_random_uuid(),
   name          text not null,
   description   text,
@@ -196,7 +221,7 @@ create table public.marking_criteria (
 );
 
 -- ---------------------------------------------------------- scores (M3)
-create table public.scores (
+create table if not exists public.scores (
   id           uuid primary key default gen_random_uuid(),
   submission_id uuid not null references public.submissions (id) on delete cascade,
   judge_id     uuid not null references public.users (id) on delete restrict,
@@ -207,10 +232,10 @@ create table public.scores (
   unique (submission_id, judge_id, criterion_id)
 );
 
-create index scores_judge_idx on public.scores (judge_id);
+create index if not exists scores_judge_idx on public.scores (judge_id);
 
 -- --------------------------------------------------------- results (M4)
-create table public.results (
+create table if not exists public.results (
   id            uuid primary key default gen_random_uuid(),
   team_id       uuid not null references public.teams (id) on delete cascade,
   idea_slot     smallint not null check (idea_slot in (1, 2)),
@@ -222,7 +247,7 @@ create table public.results (
 );
 
 -- -------------------------------------------------------------- settings
-create table public.settings (
+create table if not exists public.settings (
   key         text primary key,
   value       jsonb,
   description text,
@@ -232,7 +257,7 @@ create table public.settings (
 );
 
 -- ------------------------------------------------------------- audit log
-create table public.audit_log (
+create table if not exists public.audit_log (
   id           bigserial primary key,
   actor_id     uuid references public.users (id) on delete set null,
   actor_role   public.app_role,
@@ -243,8 +268,8 @@ create table public.audit_log (
   created_at   timestamptz not null default now()
 );
 
-create index audit_log_actor_idx on public.audit_log (actor_id);
-create index audit_log_created_idx on public.audit_log (created_at desc);
+create index if not exists audit_log_actor_idx on public.audit_log (actor_id);
+create index if not exists audit_log_created_idx on public.audit_log (created_at desc);
 
 -- -------------------------------------------------------- updated_at fn
 create or replace function public.touch_updated_at()
@@ -257,20 +282,28 @@ begin
 end;
 $$;
 
+drop trigger if exists users_touch on public.users;
 create trigger users_touch before update on public.users
   for each row execute function public.touch_updated_at();
+drop trigger if exists teams_touch on public.teams;
 create trigger teams_touch before update on public.teams
   for each row execute function public.touch_updated_at();
+drop trigger if exists members_touch on public.members;
 create trigger members_touch before update on public.members
   for each row execute function public.touch_updated_at();
+drop trigger if exists problem_statements_touch on public.problem_statements;
 create trigger problem_statements_touch before update on public.problem_statements
   for each row execute function public.touch_updated_at();
+drop trigger if exists submissions_touch on public.submissions;
 create trigger submissions_touch before update on public.submissions
   for each row execute function public.touch_updated_at();
+drop trigger if exists marking_criteria_touch on public.marking_criteria;
 create trigger marking_criteria_touch before update on public.marking_criteria
   for each row execute function public.touch_updated_at();
+drop trigger if exists results_touch on public.results;
 create trigger results_touch before update on public.results
   for each row execute function public.touch_updated_at();
+drop trigger if exists settings_touch on public.settings;
 create trigger settings_touch before update on public.settings
   for each row execute function public.touch_updated_at();
 
@@ -295,6 +328,7 @@ begin
 end;
 $$;
 
+drop trigger if exists members_max_six on public.members;
 create constraint trigger members_max_six
   after insert or update on public.members
   deferrable initially deferred
@@ -431,157 +465,197 @@ alter table public.audit_log          enable row level security;
 
 -- -------------------------------------------------------------- users
 -- Everyone reads their own row.
+drop policy if exists users_select_self on public.users;
 create policy users_select_self on public.users
   for select using (id = auth.uid());
 
 -- Admins manage accounts but must never learn that a super-admin tier
 -- exists: super-admin rows are filtered out of their result set.
+drop policy if exists users_select_admin on public.users;
 create policy users_select_admin on public.users
   for select using (
     public.is_admin_tier()
     and (public.is_super_admin() or role <> 'super_admin')
   );
 
+drop policy if exists users_update_self on public.users;
 create policy users_update_self on public.users
   for update using (id = auth.uid())
   with check (id = auth.uid());
 
 -- Role changes and account creation go through the service-role API
 -- routes, which audit-log every change. No client-side insert path.
+drop policy if exists users_write_super_admin on public.users;
 create policy users_write_super_admin on public.users
   for all using (public.is_super_admin())
   with check (public.is_super_admin());
 
 -- -------------------------------------------------------------- teams
+drop policy if exists teams_select_own on public.teams;
 create policy teams_select_own on public.teams
   for select using (created_by = auth.uid());
 
+drop policy if exists teams_select_staff on public.teams;
 create policy teams_select_staff on public.teams
   for select using (public.is_roster_viewer());
 
+drop policy if exists teams_insert_own on public.teams;
 create policy teams_insert_own on public.teams
   for insert with check (created_by = auth.uid());
 
+drop policy if exists teams_update_own on public.teams;
 create policy teams_update_own on public.teams
   for update using (created_by = auth.uid() and public.registration_editable(id))
   with check (created_by = auth.uid());
 
+drop policy if exists teams_write_admin on public.teams;
 create policy teams_write_admin on public.teams
   for all using (public.is_admin_tier())
   with check (public.is_admin_tier());
 
 -- ------------------------------------------------------------ members
+drop policy if exists members_select_own on public.members;
 create policy members_select_own on public.members
   for select using (public.owns_team(team_id));
 
+drop policy if exists members_select_staff on public.members;
 create policy members_select_staff on public.members
   for select using (public.is_roster_viewer());
 
+drop policy if exists members_write_own on public.members;
 create policy members_write_own on public.members
   for all using (public.owns_team(team_id) and public.registration_editable(team_id))
   with check (public.owns_team(team_id) and public.registration_editable(team_id));
 
+drop policy if exists members_write_admin on public.members;
 create policy members_write_admin on public.members
   for all using (public.is_admin_tier())
   with check (public.is_admin_tier());
 
 -- ------------------------------------------------------------ mentors
+drop policy if exists mentors_select_own on public.mentors;
 create policy mentors_select_own on public.mentors
   for select using (public.owns_team(team_id));
 
+drop policy if exists mentors_select_staff on public.mentors;
 create policy mentors_select_staff on public.mentors
   for select using (public.is_roster_viewer());
 
+drop policy if exists mentors_write_own on public.mentors;
 create policy mentors_write_own on public.mentors
   for all using (public.owns_team(team_id) and public.registration_editable(team_id))
   with check (public.owns_team(team_id) and public.registration_editable(team_id));
 
+drop policy if exists mentors_write_admin on public.mentors;
 create policy mentors_write_admin on public.mentors
   for all using (public.is_admin_tier())
   with check (public.is_admin_tier());
 
 -- -------------------------------------------------- problem statements
 -- The PS list is public so teams can browse before choosing.
+drop policy if exists ps_select_all on public.problem_statements;
 create policy ps_select_all on public.problem_statements
   for select using (is_active or public.is_roster_viewer());
 
+drop policy if exists ps_write_spoc on public.problem_statements;
 create policy ps_write_spoc on public.problem_statements
   for all using (public.is_spoc()) with check (public.is_spoc());
 
 -- --------------------------------------------------- team PS selection
+drop policy if exists team_ps_select_own on public.team_ps_selection;
 create policy team_ps_select_own on public.team_ps_selection
   for select using (public.owns_team(team_id));
 
+drop policy if exists team_ps_select_staff on public.team_ps_selection;
 create policy team_ps_select_staff on public.team_ps_selection
   for select using (public.is_roster_viewer());
 
+drop policy if exists team_ps_write_own on public.team_ps_selection;
 create policy team_ps_write_own on public.team_ps_selection
   for all using (public.owns_team(team_id) and public.registration_editable(team_id))
   with check (public.owns_team(team_id) and public.registration_editable(team_id));
 
+drop policy if exists team_ps_write_admin on public.team_ps_selection;
 create policy team_ps_write_admin on public.team_ps_selection
   for all using (public.is_admin_tier()) with check (public.is_admin_tier());
 
 -- -------------------------------------------------------- submissions
+drop policy if exists submissions_select_own on public.submissions;
 create policy submissions_select_own on public.submissions
   for select using (public.owns_team(team_id));
 
+drop policy if exists submissions_select_staff on public.submissions;
 create policy submissions_select_staff on public.submissions
   for select using (public.is_roster_viewer());
 
+drop policy if exists submissions_write_own on public.submissions;
 create policy submissions_write_own on public.submissions
   for all using (public.owns_team(team_id))
   with check (public.owns_team(team_id));
 
+drop policy if exists submissions_write_admin on public.submissions;
 create policy submissions_write_admin on public.submissions
   for all using (public.is_admin_tier()) with check (public.is_admin_tier());
 
 -- ---------------------------------------------------- marking criteria
+drop policy if exists criteria_select_internal on public.marking_criteria;
 create policy criteria_select_internal on public.marking_criteria
   for select using (public.current_app_role() is not null);
 
+drop policy if exists criteria_write_admin on public.marking_criteria;
 create policy criteria_write_admin on public.marking_criteria
   for all using (public.is_admin_tier()) with check (public.is_admin_tier());
 
 -- ------------------------------------------------------------- scores
 -- The load-bearing policy. Coordinators and team leads are absent from
 -- every clause here, so no marks reach them through any client.
+drop policy if exists scores_select_own_judge on public.scores;
 create policy scores_select_own_judge on public.scores
   for select using (judge_id = auth.uid());
 
+drop policy if exists scores_select_admin on public.scores;
 create policy scores_select_admin on public.scores
   for select using (public.is_admin_tier());
 
+drop policy if exists scores_write_own_judge on public.scores;
 create policy scores_write_own_judge on public.scores
   for all using (judge_id = auth.uid() and public.current_app_role() = 'judge')
   with check (judge_id = auth.uid() and public.current_app_role() = 'judge');
 
+drop policy if exists scores_write_admin on public.scores;
 create policy scores_write_admin on public.scores
   for all using (public.is_admin_tier()) with check (public.is_admin_tier());
 
 -- ------------------------------------------------------------ results
 -- A team lead sees their own verdict only once it is published.
+drop policy if exists results_select_own_published on public.results;
 create policy results_select_own_published on public.results
   for select using (public.owns_team(team_id) and is_published);
 
+drop policy if exists results_select_staff on public.results;
 create policy results_select_staff on public.results
   for select using (public.is_roster_viewer());
 
+drop policy if exists results_write_admin on public.results;
 create policy results_write_admin on public.results
   for all using (public.is_admin_tier()) with check (public.is_admin_tier());
 
 -- ----------------------------------------------------------- settings
+drop policy if exists settings_select_public on public.settings;
 create policy settings_select_public on public.settings
   for select using (is_public or public.current_app_role() is not null);
 
+drop policy if exists settings_write_spoc on public.settings;
 create policy settings_write_spoc on public.settings
   for all using (public.is_spoc()) with check (public.is_spoc());
 
 -- ---------------------------------------------------------- audit log
+drop policy if exists audit_select_super_admin on public.audit_log;
 create policy audit_select_super_admin on public.audit_log
   for select using (public.is_super_admin());
 
 -- Admins see the trail of their own actions, never anyone else's.
+drop policy if exists audit_select_own on public.audit_log;
 create policy audit_select_own on public.audit_log
   for select using (public.is_admin_tier() and actor_id = auth.uid());
 
@@ -619,6 +693,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_auth_user();
@@ -1202,7 +1277,8 @@ on conflict (key) do nothing;
 -- edit, remove or reweight these at any time from settings — verify
 -- against the current edition's official judging sheet before the event.
 -- ---------------------------------------------------------------------
-insert into public.marking_criteria (name, description, max_marks, display_order) values
+insert into public.marking_criteria (name, description, max_marks, display_order)
+select * from (values
   ('Problem Understanding & Relevance',
    'Grasp of the chosen problem statement and the significance of solving it.', 20, 1),
   ('Innovation & Novelty',
@@ -1213,7 +1289,10 @@ insert into public.marking_criteria (name, description, max_marks, display_order
    'Structure, clarity and confidence of the pitch and supporting material.', 20, 4),
   ('Execution & Prototype Readiness',
    'How much of the solution is actually working and demonstrable.', 20, 5)
-on conflict do nothing;
+) as seed(name, description, max_marks, display_order)
+-- Seeded once. Re-running must not duplicate the rubric, and there is no
+-- unique key on name, so guard on the table being empty instead.
+where not exists (select 1 from public.marking_criteria);
 
 -- ###################################################################
 -- ## 0005_grants.sql

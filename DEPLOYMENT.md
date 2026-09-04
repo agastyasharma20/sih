@@ -60,10 +60,16 @@ That one file contains every migration in the right order, so there is
 nothing to sequence by hand. It takes a few seconds.
 
 > **Paste the file's contents, not its name.** The editor needs the SQL
-> itself — several hundred lines starting with
+> itself — about 1,700 lines starting with
 > `create extension if not exists "pgcrypto";`. If you see
 > `ERROR: 42601: trailing junk after numeric literal`, you have pasted a
 > filename or a line from a table in this guide instead of the SQL.
+
+**Safe to run again.** Every statement is idempotent — existing objects
+are left alone and missing ones are created. If a run fails part-way
+(a dropped connection, a Supabase incident), just run the same file
+again; it picks up where it stopped. You will see `NOTICE: ... already
+exists, skipping` lines, which are informational, not errors.
 
 **Verify it worked.** In a new query, run:
 
