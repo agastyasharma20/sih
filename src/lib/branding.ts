@@ -1,23 +1,22 @@
 /**
  * Institutional branding.
  *
- * Both logos and both leadership photos are optional. Where a file is not
- * supplied the UI falls back to a designed placeholder — a monogram or an
- * initials badge — so the site never shows a broken image.
+ * The logo falls back to a monogram if it is missing or fails to load, so
+ * a moved file never leaves a broken icon in the header of every page.
  *
- * TO ADD THE REAL PIEMR LOGO
- *   1. Save it as `public/piemr-logo.png` (transparent PNG or SVG, about
- *      256px on the long edge).
- *   2. Set PIEMR_LOGO below to '/piemr-logo.png'.
+ * This points at PIEMR's own CloudFront distribution, the same one the
+ * institute's website uses. It is an SVG, so it is rendered unoptimized —
+ * Next's image optimizer would otherwise need `dangerouslyAllowSVG`,
+ * which relaxes a protection worth keeping. Served through an <img>, an
+ * SVG cannot execute scripts, so this is both simpler and safer.
  *
- * A local file is preferred over linking to piemr.edu.in: the institute
- * can rearrange its site at any time, and a hot-linked logo would then
- * break on every page here at once. A remote https URL does work if you
- * would rather use one — the loader falls back to the monogram if it
- * fails to load.
+ * To host it yourself instead (more robust — nothing outside this app can
+ * then break it), save the file as `public/piemr-logo.svg` and set
+ * PIEMR_LOGO to '/piemr-logo.svg'.
  */
 
-export const PIEMR_LOGO: string | null = null;
+export const PIEMR_LOGO: string | null =
+  'https://d3md8ar2i5icyz.cloudfront.net/wp-content/uploads/2022/11/logo_updated.svg';
 
-/** Shown when no logo file is set. */
+/** Shown when no logo is set, or when the file fails to load. */
 export const PIEMR_MONOGRAM = 'PI';

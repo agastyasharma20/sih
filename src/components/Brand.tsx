@@ -20,15 +20,22 @@ export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" className="flex items-center gap-3">
       {logoSrc ? (
-        <Image
-          src={logoSrc}
-          alt="PIEMR"
-          width={40}
-          height={40}
-          priority
-          className="h-10 w-10 rounded-xl object-contain"
-          onError={() => setLogoFailed(true)}
-        />
+        // A light backing keeps the institute's colour logo legible on the
+        // dark hero header as well as on white pages, and w-auto lets a
+        // wordmark keep its own proportions instead of being squeezed
+        // into a square. unoptimized because the asset is an SVG.
+        <span className="flex h-10 items-center rounded-lg bg-white px-2 shadow-sm ring-1 ring-black/5">
+          <Image
+            src={logoSrc}
+            alt="Prestige Institute of Engineering Management & Research"
+            width={150}
+            height={36}
+            priority
+            unoptimized
+            className="h-7 w-auto max-w-[150px] object-contain"
+            onError={() => setLogoFailed(true)}
+          />
+        </span>
       ) : (
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-piemr-600 to-piemr-900 text-sm font-black text-white shadow-md">
           {PIEMR_MONOGRAM}

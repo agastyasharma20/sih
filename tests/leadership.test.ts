@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { readFile } from 'node:fs/promises';
 import { LEADERSHIP, initialsFor } from '@/lib/leadership';
 
 describe('initialsFor', () => {
@@ -33,11 +34,30 @@ describe('LEADERSHIP entries', () => {
       expect(leader.title.length).toBeGreaterThan(2);
       expect(leader.bio.length).toBeGreaterThan(40);
       expect(leader.highlights.length).toBeGreaterThan(0);
-      // A photo is optional, but if set it must be a local public path so
-      // the institute site cannot break the image.
+      // A photo is optional. If set it must be either a local file under
+      // public/leadership/ or an https URL — never http, and never a
+      // relative path that would resolve differently per route.
       if (leader.photo !== null) {
-        expect(leader.photo.startsWith('/leadership/')).toBe(true);
+        const local = leader.photo.startsWith('/leadership/');
+        const remote = leader.photo.startsWith('https://');
+        expect(local || remote).toBe(true);
       }
+    }
+  });
+
+  /**
+   * next/image refuses any remote host missing from next.config.mjs, and
+   * fails silently in production — the card just falls back to initials.
+   * This catches a photo URL added without allowing its host.
+   */
+  it('only uses remote photo hosts that next.config.mjs allows', async () => {
+    // Vitest runs from the project root.
+    const config = await readFile('next.config.mjs', 'utf8');
+
+    for (const leader of LEADERSHIP) {
+      if (!leader.photo?.startsWith('https://')) continue;
+      const host = new URL(leader.photo).hostname;
+      expect(config, `${host} is not in remotePatterns`).toContain(host);
     }
   });
 

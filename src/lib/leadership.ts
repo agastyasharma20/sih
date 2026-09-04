@@ -45,7 +45,14 @@ export const LEADERSHIP: LeaderProfile[] = [
     name: 'Prof. (Dr.) Manojkumar Deshpande',
     title: 'Senior Director, PIEMR',
     role: 'Patron',
-    photo: null, // → '/leadership/manojkumar-deshpande.jpg' or an https URL
+    // NOTE: this is a Bing search-results thumbnail, not an institute
+    // asset. It is only 132x180, so it will look soft on a high-density
+    // screen, and Bing rotates these cache URLs — expect it to stop
+    // resolving eventually. Replace it with the headshot from his faculty
+    // page (piemr.edu.in/faculty-list/prof-dr-manojkumar-deshpande/),
+    // ideally saved into public/leadership/.
+    photo:
+      'https://th.bing.com/th/id/OIP.Ec84UGoyjP7JzJzz2Z43ogHaLH?w=132&h=180&c=7&r=0&o=7&dpr=1.4&pid=1.7&rm=3',
     bio:
       'Senior Director of the Prestige Institute of Engineering Management & Research, ' +
       'Indore, where he leads the institute’s academic direction and its participation ' +
@@ -59,12 +66,11 @@ export const LEADERSHIP: LeaderProfile[] = [
     profileUrl: 'https://piemr.edu.in/faculty-list/prof-dr-manojkumar-deshpande/',
   },
   {
-    name: 'Sadhana Tiwari',
-    // Her own PIEMR page uses "Er. Sadhana Tiwari". Confirm the correct
-    // honorific with her before this goes public.
+    name: 'Dr. Sadhana Tiwari',
     title: 'SIH Single Point of Contact (SPOC), PIEMR',
     role: 'SIH SPOC',
-    photo: null, // → '/leadership/sadhana-tiwari.jpg' or an https URL
+    // From the institute's own media library.
+    photo: 'https://piemr.edu.in/wp-content/uploads/2023/02/Sadhana-Tiwari.jpg',
     bio:
       'The institute’s Single Point of Contact for the Smart India Hackathon. The SPOC ' +
       'runs the internal round, registers PIEMR’s shortlisted teams on the national ' +
