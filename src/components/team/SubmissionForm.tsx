@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Upload, CheckCircle2, AlertCircle, Save } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { Loader2, Upload, CheckCircle2, AlertCircle, Save, Info } from 'lucide-react';
 import type { ProblemStatement } from '@/lib/types';
 
 interface Submission {
@@ -17,22 +16,40 @@ interface Submission {
   submitted_at: string | null;
 }
 
-const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
-
-const ACCEPTED = {
-  ppt: '.pdf,.ppt,.pptx',
-  architecture: '.pdf,.png,.jpg,.jpeg,.webp',
-};
+const LINK_FIELDS = [
+  {
+    key: 'ppt_url' as const,
+    label: 'Presentation (slides)',
+    placeholder: 'https://drive.google.com/file/d/...',
+    hint: 'Google Drive, OneDrive or a PDF link',
+  },
+  {
+    key: 'architecture_url' as const,
+    label: 'Architecture diagram',
+    placeholder: 'https://drive.google.com/file/d/...',
+    hint: 'An image or PDF link',
+  },
+  {
+    key: 'github_url' as const,
+    label: 'GitHub repository',
+    placeholder: 'https://github.com/team/project',
+    hint: 'Make the repository public',
+  },
+  {
+    key: 'video_url' as const,
+    label: 'Demo video',
+    placeholder: 'https://youtu.be/...',
+    hint: 'YouTube (unlisted is fine) or Drive',
+  },
+];
 
 export function SubmissionForm({
-  teamId,
   slot,
   existing,
   problemStatements,
   submissionsOpen,
   takenPsIds,
 }: {
-  teamId: string;
   slot: number;
   existing: Submission | null;
   problemStatements: ProblemStatement[];
@@ -40,7 +57,6 @@ export function SubmissionForm({
   takenPsIds: string[];
 }) {
   const router = useRouter();
-  const supabase = createClient();
 
   const [form, setForm] = useState({
     ps_id: existing?.ps_id ?? '',
@@ -50,48 +66,11 @@ export function SubmissionForm({
     architecture_url: existing?.architecture_url ?? '',
   });
   const [busy, setBusy] = useState<'draft' | 'final' | null>(null);
-  const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const finalised = Boolean(existing?.submitted_at);
-
-  /** Uploads straight to Supabase Storage. The bucket policy scopes writes
-   *  to this team's own folder, so the file never passes through our API. */
-  async function upload(kind: 'ppt' | 'architecture', file: File) {
-    if (file.size > MAX_UPLOAD_BYTES) {
-      setError(`${file.name} is larger than 25 MB.`);
-      return;
-    }
-
-    setUploading(kind);
-    setError(null);
-
-    const extension = file.name.split('.').pop()?.toLowerCase() ?? 'bin';
-    const path = `${teamId}/idea-${slot}-${kind}.${extension}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('submissions')
-      .upload(path, file, { upsert: true, contentType: file.type || undefined });
-
-    if (uploadError) {
-      setError(`Upload failed: ${uploadError.message}`);
-      setUploading(null);
-      return;
-    }
-
-    // The bucket is private, so hand judges a time-limited signed link.
-    const { data: signed } = await supabase.storage
-      .from('submissions')
-      .createSignedUrl(path, 60 * 60 * 24 * 30);
-
-    setForm((current) => ({
-      ...current,
-      [kind === 'ppt' ? 'ppt_url' : 'architecture_url']: signed?.signedUrl ?? '',
-    }));
-    setUploading(null);
-    setMessage(`${file.name} uploaded. Remember to save.`);
-  }
+  const disabled = !submissionsOpen;
 
   async function save(final: boolean) {
     setBusy(final ? 'final' : 'draft');
@@ -120,8 +99,6 @@ export function SubmissionForm({
     }
   }
 
-  const disabled = !submissionsOpen;
-
   return (
     <div className="card space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -149,19 +126,15 @@ export function SubmissionForm({
           onChange={(e) => setForm({ ...form, ps_id: e.target.value })}
         >
           <option value="">Not chosen yet</option>
-          {problemStatements.map((ps) => (
-            <option
-              key={ps.id}
-              value={ps.ps_id}
-              // The other idea slot cannot reuse this statement.
-              disabled={takenPsIds.includes(ps.ps_id) && ps.ps_id !== existing?.ps_id}
-            >
-              {ps.ps_id} — {ps.title}
-              {takenPsIds.includes(ps.ps_id) && ps.ps_id !== existing?.ps_id
-                ? ' (used by your other idea)'
-                : ''}
-            </option>
-          ))}
+          {problemStatements.map((ps) => {
+            const usedByOtherIdea = takenPsIds.includes(ps.ps_id) && ps.ps_id !== existing?.ps_id;
+            return (
+              <option key={ps.id} value={ps.ps_id} disabled={usedByOtherIdea}>
+                {ps.ps_id} — {ps.title}
+                {usedByOtherIdea ? ' (used by your other idea)' : ''}
+              </option>
+            );
+          })}
         </select>
         {problemStatements.length === 0 && (
           <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
@@ -170,71 +143,39 @@ export function SubmissionForm({
         )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* The single most common failure on presentation day is a Drive link
+          the judge cannot open, so the warning sits above the inputs. */}
+      <div className="flex gap-3 rounded-xl border border-piemr-200 bg-piemr-50 p-4 text-sm dark:border-piemr-900 dark:bg-piemr-950/40">
+        <Info className="h-5 w-5 shrink-0 text-piemr-600 dark:text-piemr-400" />
         <div>
-          <label className="field-label" htmlFor={`gh-${slot}`}>
-            GitHub repository
-          </label>
-          <input
-            id={`gh-${slot}`}
-            className="field-input"
-            placeholder="https://github.com/team/project"
-            value={form.github_url}
-            disabled={disabled}
-            onChange={(e) => setForm({ ...form, github_url: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="field-label" htmlFor={`vid-${slot}`}>
-            Demo video URL
-          </label>
-          <input
-            id={`vid-${slot}`}
-            className="field-input"
-            placeholder="https://youtu.be/..."
-            value={form.video_url}
-            disabled={disabled}
-            onChange={(e) => setForm({ ...form, video_url: e.target.value })}
-          />
+          <p className="font-semibold text-piemr-900 dark:text-piemr-100">
+            Set every link to &ldquo;Anyone with the link can view&rdquo;
+          </p>
+          <p className="mt-0.5 text-piemr-800 dark:text-piemr-200">
+            Judges open these on the day. A restricted Drive file or a private
+            repository counts as nothing submitted. Test each link in a private
+            browser window before you submit.
+          </p>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {([
-          ['ppt', 'Presentation (PDF or PPTX)', form.ppt_url],
-          ['architecture', 'Architecture diagram', form.architecture_url],
-        ] as const).map(([kind, label, url]) => (
-          <div key={kind}>
-            <label className="field-label" htmlFor={`file-${kind}-${slot}`}>
-              {label}
+        {LINK_FIELDS.map((field) => (
+          <div key={field.key}>
+            <label className="field-label" htmlFor={`${field.key}-${slot}`}>
+              {field.label}
             </label>
             <input
-              id={`file-${kind}-${slot}`}
-              type="file"
-              accept={ACCEPTED[kind]}
-              disabled={disabled || uploading !== null}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) upload(kind, file);
-              }}
-              className="field-input file:mr-3 file:rounded-md file:border-0 file:bg-piemr-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-piemr-700"
+              id={`${field.key}-${slot}`}
+              type="url"
+              inputMode="url"
+              className="field-input"
+              placeholder={field.placeholder}
+              value={form[field.key]}
+              disabled={disabled}
+              onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
             />
-            {uploading === kind && (
-              <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Uploading…
-              </p>
-            )}
-            {url && uploading !== kind && (
-              <a
-                href={url}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="mt-1 inline-block text-xs font-medium text-piemr-600 underline"
-              >
-                View uploaded file
-              </a>
-            )}
+            <p className="mt-1 text-xs text-slate-500">{field.hint}</p>
           </div>
         ))}
       </div>
@@ -272,7 +213,11 @@ export function SubmissionForm({
           disabled={disabled || busy !== null}
           className="btn-secondary"
         >
-          {busy === 'draft' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {busy === 'draft' ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
           Save draft
         </button>
         <button
@@ -281,7 +226,11 @@ export function SubmissionForm({
           disabled={disabled || busy !== null || !form.ps_id}
           className="btn-primary"
         >
-          {busy === 'final' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {busy === 'final' ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4" />
+          )}
           {finalised ? 'Update submission' : 'Submit idea'}
         </button>
       </div>

@@ -100,7 +100,7 @@ export default async function SubmitPage() {
         return (
           <SubmissionForm
             key={slot}
-            teamId={team.id}
+
             slot={slot}
             submissionsOpen={submissionsOpen}
             problemStatements={(psRows ?? []) as ProblemStatement[]}

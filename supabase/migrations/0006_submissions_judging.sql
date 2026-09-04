@@ -410,50 +410,18 @@ revoke all on function public.public_results() from public;
 grant execute on function public.public_results() to anon, authenticated;
 
 -- =====================================================================
--- Storage for PPTs and architecture diagrams.
+-- Deliberately no Storage bucket.
 --
--- Guarded so this migration also applies to a plain Postgres instance
--- (the test harness), where the storage schema does not exist.
+-- Teams link their presentation and architecture diagram (Google Drive,
+-- OneDrive, GitHub) rather than uploading. At ~120 teams a 25 MB upload
+-- cap would need roughly 2 GB, against the 1 GB Supabase gives for free,
+-- and the whole point of this deployment is that it costs nothing.
+--
+-- Links also survive the event: a Drive file stays reachable after the
+-- project is archived, where a bucket on a paused free project does not.
+--
+-- If the institute later funds a paid plan and wants real uploads, add a
+-- bucket and a policy scoping writes to `(storage.foldername(name))[1] =
+-- team_id`, then swap the two URL fields in the submission form for file
+-- inputs. Nothing else changes: submissions already stores plain URLs.
 -- =====================================================================
-do $$
-begin
-  if exists (select 1 from information_schema.schemata where schema_name = 'storage') then
-
-    insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-    values (
-      'submissions', 'submissions', false,
-      26214400,  -- 25 MB
-      array[
-        'application/pdf',
-        'application/vnd.ms-powerpoint',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        'image/png', 'image/jpeg', 'image/webp'
-      ]
-    )
-    on conflict (id) do update set
-      file_size_limit    = excluded.file_size_limit,
-      allowed_mime_types = excluded.allowed_mime_types;
-
-    -- Files live under <team_id>/..., so a team lead can only reach their
-    -- own folder. Staff get read access for judging and verification.
-    execute $p$
-      create policy submissions_team_rw on storage.objects
-        for all to authenticated
-        using (
-          bucket_id = 'submissions'
-          and public.owns_team((storage.foldername(name))[1]::uuid)
-        )
-        with check (
-          bucket_id = 'submissions'
-          and public.owns_team((storage.foldername(name))[1]::uuid)
-        )
-    $p$;
-
-    execute $p$
-      create policy submissions_staff_read on storage.objects
-        for select to authenticated
-        using (bucket_id = 'submissions' and public.is_roster_viewer())
-    $p$;
-
-  end if;
-end $$;

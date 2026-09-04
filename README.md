@@ -10,7 +10,10 @@ publishing, and problem-statement management with analytics. Each stage
 is gated by a switch an admin controls, so the round opens and closes
 without a deploy.
 
-See **[DEPLOYMENT.md](DEPLOYMENT.md)** to put it online.
+**It runs at zero cost.** Teams link their slides and diagrams rather
+than uploading them, and participants sign up with a password rather than
+an emailed link — the two things that would otherwise push this onto a
+paid Supabase plan. See **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
 ---
 
@@ -284,11 +287,13 @@ These are open in the spec and deliberately not baked in:
 
 **Submission** (`/dashboard/team/submit`). Up to two ideas per team, each
 against a different problem statement — the second slot cannot reuse the
-first's. Presentations and architecture diagrams upload straight from the
-browser to Supabase Storage, into a folder scoped to the team by bucket
-policy, and judges get time-limited signed links. Drafts save without a
-problem statement; finalising requires one, and once finalised a later
-draft save cannot clear the submitted timestamp.
+first's. Teams paste links to their slides, architecture diagram, GitHub
+repository and demo video rather than uploading files, which keeps the
+deployment inside Supabase's free storage tier and means the artefacts
+outlive the event. The form warns about link sharing up front, because a
+restricted Drive file is the most common failure on presentation day.
+Drafts save without a problem statement; finalising requires one, and
+once finalised a later draft save cannot clear the submitted timestamp.
 
 **Judging** (`/dashboard/judge`). A judge types the 3-digit Team ID,
 reviews the artefacts, and scores each criterion with optional remarks.

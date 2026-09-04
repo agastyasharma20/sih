@@ -1,7 +1,12 @@
 # Deploying the PIEMR Hackathon Platform
 
 From an empty Supabase project to a public URL. Budget about 45 minutes
-the first time. Everything below is free-tier except a custom domain.
+the first time.
+
+**This runs at zero cost, permanently.** Not a trial — the free tiers
+below are ongoing. The app is deliberately built to stay inside them:
+teams link their slides and diagrams rather than uploading, because file
+storage is the only thing that would have forced a paid plan.
 
 ---
 
@@ -15,6 +20,20 @@ the first time. Everything below is free-tier except a custom domain.
 | A domain (optional) | e.g. `hackathon.piemr.edu.in` | Only if you want a custom URL |
 
 Sign in to Vercel with GitHub — it makes the import step one click.
+
+### Why this fits the free tier
+
+The two things that normally push a project like this onto a paid plan
+are file storage and transactional email. Both are designed around:
+
+| Pressure | How it is avoided |
+|---|---|
+| **File storage** — 120 teams × 25 MB ≈ 2 GB, against 1 GB free | Teams paste Drive/GitHub/YouTube links. Nothing is uploaded, so storage usage is zero. Links also outlive the event. |
+| **Auth emails** — Supabase's free mailer sends only a few per hour, and 120 leads signing in would jam it | Participants sign up with a password, so no auth email is sent at all. The sign-in link is still there for anyone who prefers it. |
+| **Confirmation emails** — 120 teams × 6 members = 720 | Resend's free tier covers 3,000/month. Comfortably inside. |
+
+Actual usage at ~120 teams: under 100 MB of database against 500 MB free,
+about 750 monthly users against 50,000, and no storage at all.
 
 ---
 
@@ -60,7 +79,7 @@ supabase db push
 ```sql
 select count(*) from public.settings;         -- expect 14
 select count(*) from public.marking_criteria; -- expect 5
-select id from storage.buckets where id = 'submissions';  -- expect 1 row
+select count(*) from pg_proc where proname = 'register_team';  -- expect 1
 ```
 
 ---
@@ -93,6 +112,11 @@ after step 6 if you do not have the URL yet.
 Email → **Restrict sign-ups to these domains**: `piemr.edu.in`. The app
 enforces this server-side too, but defence in depth is free here.
 
+**Turn off "Confirm email"** (Authentication → Providers → Email). The
+app creates participant accounts already confirmed so that no auth email
+is needed. Leaving confirmation on will not break signup, but it will
+send mail you do not need and can hit the free-tier rate limit.
+
 ---
 
 ## 5. Set up email (Resend)
@@ -107,10 +131,11 @@ Team IDs are shown on screen and on the dashboard — confirmation emails
 are logged and skipped rather than failing the registration. You can add
 the key later without redeploying anything else.
 
-Supabase's own sign-in emails are separate and rate-limited on the free
-tier (a few per hour). For ~120 team leads signing in at once, go to
-**Project Settings → Authentication → SMTP Settings** and point Supabase
-at Resend as well, or leads will hit the limit.
+**You do not need to configure Supabase SMTP.** Participants sign up with
+a password, so Supabase sends no auth email. If you later want the
+sign-in-link option used heavily, point Supabase at Resend under
+**Project Settings → Authentication → SMTP Settings** — otherwise its
+built-in mailer will rate-limit.
 
 ---
 
@@ -212,21 +237,35 @@ links will break.
 
 For ~120 teams (720 students):
 
-| Resource | Expected | Free tier |
-|---|---|---|
-| Database | < 100 MB | 500 MB |
-| Storage (PPTs, diagrams) | ~2 GB at 25 MB/team | 1 GB — **may need the $25/mo Pro plan** |
-| Monthly active users | ~750 | 50,000 |
-| Vercel bandwidth | Well under | 100 GB |
+| Resource | Expected | Free tier | Headroom |
+|---|---|---|---|
+| Database | < 100 MB | 500 MB | 5× |
+| File storage | **0** — links only | 1 GB | n/a |
+| Monthly active users | ~750 | 50,000 | 65× |
+| Confirmation emails | ~750/month | 3,000/month | 4× |
+| Vercel bandwidth | A few GB | 100 GB | comfortable |
 
-Storage is the one thing likely to exceed free tier. Options: lower the
-25 MB cap in `0006_submissions_judging.sql`, ask teams to link Google
-Drive instead of uploading, or upgrade for the event month and downgrade
-after.
+Nothing here is close to a limit. **Total cost: ₹0.**
 
-**Supabase free projects pause after 7 days of inactivity.** Log in to
-the dashboard weekly in the run-up, or upgrade before the event so it
-cannot pause the night before.
+### The one thing that can bite you
+
+**Supabase free projects pause after 7 days of inactivity.** If it pauses
+the night before the event, you restore it from the dashboard in about a
+minute — but only if you notice. Two ways to avoid it entirely:
+
+- Open the Supabase dashboard once a week during the run-up. Any activity
+  resets the timer.
+- Or, in the last fortnight, just use the site occasionally yourself.
+
+During the event it will be active daily, so this only matters beforehand.
+
+### If the institute later funds a paid plan
+
+The one feature worth buying back is real file uploads instead of links
+(Supabase Pro, $25/mo, 100 GB). `0006_submissions_judging.sql` documents
+exactly what to add — a bucket plus a policy scoping writes to the team's
+own folder. The `submissions` table already stores plain URLs, so nothing
+else changes.
 
 ---
 
@@ -241,17 +280,23 @@ before you are ready.
 
 **Emails not arriving** — check the Resend dashboard for bounces, verify
 the domain's DNS records are verified, and confirm `EMAIL_FROM` uses a
-domain you verified. Team IDs are always shown on screen regardless.
+domain you verified. Team IDs are always shown on screen regardless, so
+registration is never blocked by mail problems.
 
-**Sign-in emails stop during a rush** — Supabase's built-in mailer is
-rate-limited. Configure custom SMTP (step 5).
+**Sign-in emails stop during a rush** — that is Supabase's built-in
+mailer rate-limiting. Tell people to use the password option, which sends
+no email at all, or configure custom SMTP (step 5).
+
+**A judge cannot open a team's slides** — the team's Drive link is not
+shared. This is the most common failure on presentation day, which is why
+the submission form warns about it. An admin can see every link on the
+Teams screen and chase the team before they present.
 
 **A build fails on Vercel** — check the build log for a missing
 environment variable; that is the usual cause. All five must be set.
 
-**Uploads fail** — file is over 25 MB or a type the bucket rejects
-(PDF, PPT, PPTX, PNG, JPEG, WebP). Both limits live in
-`0006_submissions_judging.sql`.
+**A submission will not finalise** — a problem statement must be chosen
+first. Drafts save without one.
 
 ---
 
