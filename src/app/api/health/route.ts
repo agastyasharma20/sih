@@ -21,7 +21,14 @@ export async function GET() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const secret = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+  // Name the project this deployment actually talks to. Having two
+  // Supabase projects and configuring the wrong one is easy to do and
+  // otherwise presents as "table does not exist" in a dashboard that
+  // clearly shows the table.
   checks.supabase_url = url ? 'set' : 'MISSING';
+  checks.supabase_project = url
+    ? (url.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ?? url)
+    : 'unknown';
   checks.publishable_key = publishable
     ? publishable.startsWith('sb_secret_')
       ? 'WRONG KEY — this is a secret key, not the publishable one'
@@ -50,9 +57,13 @@ export async function GET() {
         ? 'reachable'
         : count >= 14
           ? `ready (${count} settings)`
-          : `INCOMPLETE — ${count} settings, expected 14. Re-run SETUP_ALL.sql`;
+          : `INCOMPLETE — ${count} settings, expected 14. Run SETUP_ALL.sql in THIS project (${checks.supabase_project})`;
   } catch (error) {
     checks.database = `UNREACHABLE — ${error instanceof Error ? error.message : 'unknown'}`;
+  }
+
+  if (String(checks.database).includes('does not exist')) {
+    checks.database += ' — the migrations have not been run in this project';
   }
 
   // Can the server reach the admin API? This is what sign-up needs.

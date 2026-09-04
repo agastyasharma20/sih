@@ -396,7 +396,27 @@ the submission form warns about it. An admin can see every link on the
 Teams screen and chase the team before they present.
 
 **A build fails on Vercel** — check the build log for a missing
-environment variable; that is the usual cause. All five must be set.
+environment variable; that is the usual cause.
+
+**`relation "public.users" does not exist`, but you can see the table** —
+you have more than one Supabase project and are looking at a different
+one from the app. The project reference appears in the dashboard URL
+(`/dashboard/project/<ref>/…`) and in `NEXT_PUBLIC_SUPABASE_URL`
+(`https://<ref>.supabase.co`). They must match. `/api/health` reports the
+one the deployment is actually using, as `supabase_project`.
+
+Creating a second project by accident is easy — decide which one is real,
+run `SETUP_ALL.sql` there, point Vercel's variables at it, redeploy, and
+delete the other so it cannot confuse you later.
+
+**`/api/health` returns 404** — the deployment predates that route.
+Vercel → Deployments → ⋯ → Redeploy, and check it is building the branch
+you expect.
+
+**Sign-up fails with `Unexpected token '<' … is not valid JSON`** — the
+server returned an HTML error page instead of JSON, which means the route
+crashed. Almost always the database it points at has no tables (wrong
+project) or the secret key is unset. `/api/health` distinguishes the two.
 
 **A submission will not finalise** — a problem statement must be chosen
 first. Drafts save without one.
