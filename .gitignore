@@ -21,3 +21,9 @@ shots/
 *.orig
 .shoot*.mjs
 .build.log
+/test-results/
+/playwright-report/
+/blob-report/
+.e2e.log
+.final.log
+.finalcheck.sh

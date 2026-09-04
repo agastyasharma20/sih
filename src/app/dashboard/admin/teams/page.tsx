@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { requireProfile, isAdminTier, isSpoc } from '@/lib/auth';
 import { TeamControls, TeamBulkActions } from '@/components/admin/TeamControls';
+import { TeamSearch } from '@/components/admin/TeamSearch';
+import { teamSearchText } from '@/lib/search';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -33,6 +35,20 @@ export default async function AdminTeamsPage() {
         <TeamBulkActions canLock={isSpoc(profile)} />
       </div>
 
+      {(teams ?? []).length > 0 && (
+        <TeamSearch
+          rows={(teams ?? []).map((team) => ({
+            id: team.id as string,
+            text: teamSearchText({
+              team_id_short: team.team_id_short as string,
+              team_name: team.team_name as string,
+              status: team.status as string,
+              members: team.members as never,
+            }),
+          }))}
+        />
+      )}
+
       {(teams ?? []).length === 0 ? (
         <div className="card">
           <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -49,7 +65,7 @@ export default async function AdminTeamsPage() {
             );
 
             return (
-              <details key={team.id} className="card group">
+              <details key={team.id} data-team-id={team.id} className="card group">
                 <summary className="flex cursor-pointer flex-wrap items-center gap-4 list-none">
                   <span className="rounded-lg bg-piemr-600 px-3 py-1.5 font-mono text-sm font-bold text-white">
                     {team.team_id_short}

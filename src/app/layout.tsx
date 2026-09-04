@@ -1,5 +1,19 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { MotionProvider } from '@/components/motion/MotionProvider';
+
+/**
+ * Runs before the first paint, so a visitor who chose dark never sees a
+ * flash of white. Kept inline and tiny for that reason — a component
+ * could not run early enough.
+ */
+const THEME_SCRIPT = `
+try {
+  var t = localStorage.getItem('theme');
+  var dark = t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  if (dark) document.documentElement.classList.add('dark');
+} catch (e) {}
+`;
 
 export const metadata: Metadata = {
   title: 'PIEMR Internal Hackathon',
@@ -10,7 +24,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen">{children}</body>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body className="min-h-screen">
+        <MotionProvider>{children}</MotionProvider>
+      </body>
     </html>
   );
 }

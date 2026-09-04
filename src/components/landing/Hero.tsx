@@ -4,10 +4,13 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, CalendarDays, Users } from 'lucide-react';
 import { StatCounter } from './StatCounter';
+import { Countdown } from './Countdown';
 
 interface HeroProps {
   eventName: string;
   hackathonDate: string;
+  /** Raw ISO date for the live clock; null while the schedule is TBD. */
+  hackathonDateRaw: string | null;
   registrationOpen: boolean;
   teamCount: number;
   participantCount: number;
@@ -26,6 +29,7 @@ const fadeUp = {
 export function Hero({
   eventName,
   hackathonDate,
+  hackathonDateRaw,
   registrationOpen,
   teamCount,
   participantCount,
@@ -102,6 +106,8 @@ export function Hero({
             </span>
           </motion.div>
         </motion.div>
+
+        <Countdown target={hackathonDateRaw} label="Hackathon begins in" />
 
         <div className="mt-16 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatCounter value={teamCount} label="Teams registered" />

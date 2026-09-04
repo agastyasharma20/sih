@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { LoginForm } from '@/components/LoginForm';
 import { Brand } from '@/components/Brand';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export const metadata = { title: 'Sign in · PIEMR Hackathon' };
 
@@ -32,8 +33,13 @@ export default function LoginPage() {
 
       <div className="flex w-full items-center justify-center px-6 py-12 lg:w-1/2">
         <div className="w-full max-w-sm">
-          <div className="lg:hidden">
-            <Brand />
+          <div className="flex items-center justify-between">
+            <div className="lg:hidden">
+              <Brand />
+            </div>
+            <div className="ml-auto">
+              <ThemeToggle />
+            </div>
           </div>
 
           <h1 className="mt-8 text-2xl font-bold tracking-tight lg:mt-0">Sign in</h1>

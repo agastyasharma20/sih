@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { Brand, BrandFooter } from '@/components/Brand';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Trophy } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -29,9 +30,12 @@ export default async function PublicResultsPage() {
       <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Brand />
-          <Link href="/login" className="btn-secondary py-1.5 text-xs">
-            Sign in
-          </Link>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Link href="/login" className="btn-secondary py-1.5 text-xs">
+              Sign in
+            </Link>
+          </div>
         </div>
       </header>
 

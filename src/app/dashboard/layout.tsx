@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireProfile, isAdminTier, isSpoc } from '@/lib/auth';
 import { Brand, BrandFooter } from '@/components/Brand';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,7 +60,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </nav>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
             <span className="hidden text-sm text-slate-500 sm:block dark:text-slate-400">
               {profile.full_name ?? profile.email}
             </span>

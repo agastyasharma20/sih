@@ -60,12 +60,29 @@ registration on. None of those are set in code.
 
 ## Tests
 
-Two suites, both runnable without any cloud dependency.
+Three suites, none of which need a cloud connection.
 
 ```bash
-npm test                     # unit tests (validation, CSV, analytics)
+npm test                     # unit + component tests
+npm run test:e2e             # browser tests, desktop and mobile
 ./supabase/tests/run.sh      # migrations + RLS, needs a local PostgreSQL 16
+
+npm run test:all             # unit and browser together
 ```
+
+**Browser tests** (`e2e/`) run a production build in real Chromium, at
+both a desktop and a Pixel viewport. They assert that every public page
+returns 200 and logs no script errors, that no page scrolls sideways on a
+phone, that every protected route redirects a signed-out visitor and every
+privileged API refuses one, that the theme toggle persists across a
+reload, and that every form control is labelled and every image has alt
+text.
+
+Auth is deliberately **not** bypassed for them — that would mean shipping
+an escape hatch to production. Screens behind auth are covered by
+component tests instead, which drive the real registration form: the
+six-member limit, the female-member rule, the fixed team-lead email, the
+optional mentor section, and that an empty form never reaches the network.
 
 **Unit tests** cover the logic most likely to break silently: the shared
 registration schema (team size, the female-member rule, domain checks,
@@ -302,6 +319,25 @@ is `security_invoker`, so a coordinator opening it sees nothing. An admin
 sets a verdict and publishes it per team; the team lead then sees their
 own verdict and nobody else's. The public page lists selected teams and
 never marks.
+
+## Interface
+
+- **Searchable problem statements.** The full SIH catalogue is a few
+  hundred entries, so `/problem-statements` filters on PS number, title,
+  theme, ministry and description as you type, with category and theme
+  filters alongside. Everything runs client-side off one payload — no
+  request per keystroke, and it stays usable on a phone.
+- **Live countdown** to the hackathon, which appears only once a date is
+  set and disappears once it passes.
+- **Team search** on the admin roster, matching across team ID, name,
+  member names, emails and enrollment numbers.
+- **Light and dark**, remembered per visitor and applied before first
+  paint so there is no flash of the wrong theme.
+- **Motion** is defined once in `src/lib/motion.ts` and applied through
+  `MotionProvider`, which sets Framer's `reducedMotion="user"`. A visitor
+  who has asked their operating system for reduced motion gets opacity
+  changes only — no movement — without that having to be remembered at
+  each call site.
 
 ## Branding
 
