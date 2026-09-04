@@ -205,10 +205,28 @@ redeploys automatically.
 
 ---
 
-## 7. Seed the super-admin
+## 7. Create your super-admin account
 
-This account is not creatable from any screen — it exists only via this
-script. Run it **once**, from your own machine:
+There is no Super-Admin option anywhere in the app's UI, by design. Two
+ways in — pick one.
+
+### Option A — through the dashboard (no local setup)
+
+**1.** Supabase → **Authentication → Users → Add user → Create new user**
+
+| Field | Value |
+|---|---|
+| Email | your `@piemr.edu.in` address |
+| Password | something long — save it in a password manager |
+| **Auto Confirm User** | **ON** — without this you cannot sign in |
+
+**2.** SQL Editor → paste **[`supabase/MAKE_SUPER_ADMIN.sql`](supabase/MAKE_SUPER_ADMIN.sql)**,
+change the one email address near the top, and Run.
+
+It prints `Super-admin ready: …` and returns one row with
+`role = super_admin`. Safe to run more than once.
+
+### Option B — the seed script (needs Node locally)
 
 ```bash
 git clone https://github.com/agastyasharma20/sih.git
@@ -222,15 +240,24 @@ SUPABASE_SECRET_KEY=sb_secret_...
 ENV
 
 SUPER_ADMIN_EMAIL=you@piemr.edu.in \
-SUPER_ADMIN_PASSWORD='<a long random password>' \
+SUPER_ADMIN_PASSWORD='<at least 16 characters>' \
 npm run seed:super-admin
 ```
 
-The password must be at least 16 characters. Store it in a password
-manager — there is no reset flow for this tier. Then **delete
-`.env.local`**, or at least confirm it is git-ignored (it is).
+Then **delete `.env.local`**, or at least confirm it is git-ignored (it is).
 
----
+Either way: there is no password reset for this tier. Store it properly.
+
+### Creating everyone else
+
+Once you can sign in as super-admin, every other account is made from
+inside the app: **Settings → Create an account**, choosing Judge,
+Coordinator, or Admin. Passwords are set by you and handed over directly —
+nothing is emailed. Participants create their own accounts from the login
+page.
+
+Only a super-admin can create Admin accounts. An Admin can create Judges
+and Coordinators.
 
 ## 8. First-run checklist
 

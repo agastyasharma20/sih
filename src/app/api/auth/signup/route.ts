@@ -65,7 +65,23 @@ export async function POST(request: Request) {
     );
   }
 
-  const admin = createAdminClient();
+  // A missing or wrong secret key is the most common deployment mistake,
+  // and it surfaces here first. Say so plainly rather than blaming the user.
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch (error) {
+    console.error('[signup] admin client unavailable:', error);
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          'The server is not configured for sign-ups yet. An administrator needs to set ' +
+          'SUPABASE_SECRET_KEY. Use the sign-in link option in the meantime.',
+      },
+      { status: 500 },
+    );
+  }
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
@@ -74,18 +90,53 @@ export async function POST(request: Request) {
     user_metadata: { full_name },
   });
 
-  if (createError || !created.user) {
-    // Never reveal whether an address is already registered beyond what the
-    // person needs to recover.
-    const alreadyExists = createError?.message?.toLowerCase().includes('already');
+  if (createError || !created?.user) {
+    // Log the real reason; the response stays deliberately vague about
+    // whether an address is already registered.
+    console.error('[signup] createUser failed:', {
+      status: createError?.status,
+      code: createError?.code,
+      message: createError?.message,
+    });
+
+    const reason = createError?.message?.toLowerCase() ?? '';
+
+    if (reason.includes('already') || reason.includes('registered')) {
+      return NextResponse.json(
+        { ok: false, message: 'An account already exists for that email. Sign in instead.' },
+        { status: 409 },
+      );
+    }
+
+    // "User not allowed" means the key in use is not the secret key — the
+    // publishable key cannot reach the admin API.
+    if (reason.includes('not allowed') || createError?.status === 403) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            'The server is using the wrong Supabase key for sign-ups. It needs the secret ' +
+            '(sb_secret_…) key, not the publishable one.',
+        },
+        { status: 500 },
+      );
+    }
+
+    if (reason.includes('password')) {
+      return NextResponse.json(
+        { ok: false, message: 'That password was rejected. Try a longer one.' },
+        { status: 422 },
+      );
+    }
+
     return NextResponse.json(
       {
         ok: false,
-        message: alreadyExists
-          ? 'An account already exists for that email. Sign in instead.'
+        message: createError?.message
+          ? `Could not create the account: ${createError.message}`
           : 'Could not create the account. Please try again.',
       },
-      { status: 409 },
+      { status: 400 },
     );
   }
 
