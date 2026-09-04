@@ -1,25 +1,46 @@
+'use client';
+
 import Link from 'next/link';
+import Image from 'next/image';
+import { useState } from 'react';
+import { Heart, Mail, ExternalLink } from 'lucide-react';
 import { PIEMR_SITE, SIH_SITE } from '@/lib/constants';
+import { PIEMR_LOGO, PIEMR_MONOGRAM } from '@/lib/branding';
 
 /**
- * Institutional lockup. The logos are loaded from the live PIEMR and SIH
- * sites rather than vendored, so a mid-year rebrand (SIH refreshes its
- * identity each edition) does not leave a stale asset in the repo.
+ * Institutional lockup. Uses the real logo when one is configured in
+ * src/lib/branding.ts, and a monogram otherwise — including when a
+ * configured image fails to load, so a moved file never leaves a broken
+ * icon in the header of every page.
  */
 export function Brand({ compact = false }: { compact?: boolean }) {
+  const [logoFailed, setLogoFailed] = useState(false);
+  const logoSrc = logoFailed ? null : PIEMR_LOGO;
+
   return (
     <Link href="/" className="flex items-center gap-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-piemr-600 to-piemr-900 text-sm font-black text-white shadow-md">
-        PI
-      </div>
+      {logoSrc ? (
+        <Image
+          src={logoSrc}
+          alt="PIEMR"
+          width={40}
+          height={40}
+          priority
+          className="h-10 w-10 rounded-xl object-contain"
+          onError={() => setLogoFailed(true)}
+        />
+      ) : (
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-piemr-600 to-piemr-900 text-sm font-black text-white shadow-md">
+          {PIEMR_MONOGRAM}
+        </div>
+      )}
+
       {!compact && (
         <div className="leading-tight">
           <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
             PIEMR Hackathon
           </p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            SIH Internal Selection
-          </p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">SIH Internal Selection</p>
         </div>
       )}
     </Link>
@@ -28,28 +49,69 @@ export function Brand({ compact = false }: { compact?: boolean }) {
 
 export function BrandFooter() {
   return (
-    <footer className="border-t border-slate-200 bg-white py-8 dark:border-slate-800 dark:bg-slate-950">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-slate-500 sm:flex-row dark:text-slate-400">
-        <p>
-          Prestige Institute of Engineering Management &amp; Research, Indore
-        </p>
-        <div className="flex items-center gap-5">
-          <a
-            href={PIEMR_SITE}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="hover:text-piemr-600 dark:hover:text-piemr-400"
-          >
-            piemr.edu.in
-          </a>
-          <a
-            href={SIH_SITE}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="hover:text-sih-saffron"
-          >
-            sih.gov.in
-          </a>
+    <footer className="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+      <div className="mx-auto max-w-6xl px-6 py-10">
+        <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
+          <div>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              Prestige Institute of Engineering Management &amp; Research
+            </p>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              Indore, Madhya Pradesh
+            </p>
+          </div>
+
+          <div className="flex items-center gap-5 text-sm">
+            <a
+              href={PIEMR_SITE}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-slate-500 transition hover:text-piemr-600 dark:text-slate-400"
+            >
+              piemr.edu.in
+            </a>
+            <a
+              href={SIH_SITE}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-slate-500 transition hover:text-sih-saffron dark:text-slate-400"
+            >
+              sih.gov.in
+            </a>
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-col items-center gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-between dark:border-slate-800">
+          <p className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+            Designed &amp; developed by
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              Agastya Sharma
+            </span>
+            with
+            <Heart
+              className="h-3.5 w-3.5 fill-rose-500 text-rose-500"
+              aria-label="love"
+            />
+          </p>
+
+          <div className="flex items-center gap-4">
+            <a
+              href="mailto:work.agastya20@gmail.com"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-500 transition hover:text-piemr-600 dark:text-slate-400"
+            >
+              <Mail className="h-4 w-4" />
+              work.agastya20@gmail.com
+            </a>
+            <a
+              href="https://www.linkedin.com/in/agastya20"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-500 transition hover:text-piemr-600 dark:text-slate-400"
+            >
+              <ExternalLink className="h-4 w-4" />
+              LinkedIn
+            </a>
+          </div>
         </div>
       </div>
     </footer>

@@ -15,13 +15,13 @@ import {
   type TeamRow,
   type PsRow,
 } from '@/lib/analytics';
+import { PsDemandTable } from '@/components/admin/PsDemandTable';
 import {
   RegistrationTrend,
   CategoryBars,
   GenderDonut,
   CategoryDonut,
-  PsDemandTable,
-} from '@/components/admin/AnalyticsCharts';
+} from '@/components/admin/ChartsLazy';
 import { TEAM_SIZE } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';

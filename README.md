@@ -303,6 +303,22 @@ sets a verdict and publishes it per team; the team lead then sees their
 own verdict and nobody else's. The public page lists selected teams and
 never marks.
 
+## Branding
+
+`src/lib/branding.ts` and `src/lib/leadership.ts` hold everything
+institution-specific. Both fall back to designed placeholders — a
+monogram and an initials badge — so nothing ever renders as a broken
+image:
+
+- **PIEMR logo** — save it as `public/piemr-logo.png`, then set
+  `PIEMR_LOGO` to `'/piemr-logo.png'`.
+- **Leadership photos** — save square images into `public/leadership/`
+  and set each `photo`, or paste an https URL from piemr.edu.in. Photos
+  are cropped square and centred, so a portrait headshot works unedited.
+
+A local file is preferred over hot-linking: if the institute rearranges
+its site, a linked image breaks on every page here at once.
+
 ## Still to come
 
 Once the first round has run: problem-statement popularity, judge scoring

@@ -1,9 +1,42 @@
 'use client';
 
 import Image from 'next/image';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
-import { LEADERSHIP, initialsFor } from '@/lib/leadership';
+import { LEADERSHIP, initialsFor, type LeaderProfile } from '@/lib/leadership';
+
+/**
+ * Fixed 88px square so both cards align regardless of the source image's
+ * aspect ratio, with object-cover doing the crop. Falls back to an
+ * initials badge if no photo is set or the file fails to load.
+ */
+function LeaderPortrait({ leader }: { leader: LeaderProfile }) {
+  const [failed, setFailed] = useState(false);
+  const src = failed ? null : leader.photo;
+
+  if (!src) {
+    return (
+      <div
+        aria-hidden
+        className="flex h-[88px] w-[88px] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-piemr-600 to-sih-navy text-2xl font-black tracking-wide text-white shadow-inner"
+      >
+        {initialsFor(leader.name)}
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={leader.name}
+      width={88}
+      height={88}
+      onError={() => setFailed(true)}
+      className="h-[88px] w-[88px] shrink-0 rounded-2xl object-cover object-top ring-1 ring-slate-200 dark:ring-slate-700"
+    />
+  );
+}
 
 /** Named leadership behind the institute's SIH participation. */
 export function Leadership() {
@@ -37,22 +70,7 @@ export function Leadership() {
               <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-piemr-600 via-sih-saffron to-sih-green" />
 
               <div className="flex items-start gap-5">
-                {leader.photo ? (
-                  <Image
-                    src={leader.photo}
-                    alt={leader.name}
-                    width={88}
-                    height={88}
-                    className="h-22 w-22 shrink-0 rounded-2xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
-                  />
-                ) : (
-                  <div
-                    aria-hidden
-                    className="flex h-[88px] w-[88px] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-piemr-600 to-sih-navy text-2xl font-black tracking-wide text-white shadow-inner"
-                  >
-                    {initialsFor(leader.name)}
-                  </div>
-                )}
+                <LeaderPortrait leader={leader} />
 
                 <div className="min-w-0">
                   <span className="badge bg-sih-saffron/15 text-sih-saffron">{leader.role}</span>

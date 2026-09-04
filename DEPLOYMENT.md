@@ -339,6 +339,41 @@ else changes.
 
 ---
 
+## Making it fast
+
+Two things dominate page load, and both are already configured — but the
+first only takes effect on a redeploy.
+
+**1. Run the app in the same region as the database.** This is the big
+one. Vercel's Hobby plan defaults to Washington DC (`iad1`); your Supabase
+project is in Mumbai (`ap-south-1`). Every query then crosses the planet
+and back — roughly 250 ms each, several per page. `vercel.json` pins the
+functions to Mumbai (`bom1`):
+
+```json
+{ "regions": ["bom1"] }
+```
+
+Check it applied: Vercel → your project → Settings → Functions → Region
+should read Mumbai. If you ever move the Supabase project, change both.
+
+**2. The database work is done.** Migration `0010` fixes eight policies
+that re-evaluated `auth.uid()` once per row rather than once per query,
+and adds covering indexes for five foreign keys plus the judge's
+Team ID lookup.
+
+**3. Charts load on demand.** Recharts is ~110 kB and only appears on the
+analytics screen, so it is loaded dynamically. That took the analytics
+page from 208 kB of first-load JavaScript to 89 kB, and keeps it out of
+every other page — including the registration form students actually use
+on their phones.
+
+If a page still feels slow after a redeploy, the first thing to check is
+whether the Supabase project has gone to sleep (free projects pause after
+7 days idle) — the first request after a pause takes several seconds.
+
+---
+
 ## Is it working? Check `/api/health`
 
 Open `https://your-app.vercel.app/api/health` in a browser. It reports

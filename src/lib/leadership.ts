@@ -4,11 +4,22 @@
  * Edit this file to change names, titles, photos or copy — it is the only
  * place these appear.
  *
- * PHOTOS. Drop a square JPG or PNG into `public/leadership/` and set
- * `photo` to `/leadership/<filename>`. Images are served from this app
- * rather than hot-linked from piemr.edu.in, so a change on the institute
- * site cannot leave a broken image here. Until a file is added, a styled
- * initials badge is shown instead, so the section always looks finished.
+ * PHOTOS — two ways, both fine:
+ *
+ *   a) LOCAL (preferred). Save a square JPG/PNG into `public/leadership/`
+ *      and set `photo` to '/leadership/<filename>'. Nothing outside this
+ *      app can then break the image.
+ *
+ *   b) REMOTE. Paste an https URL — on piemr.edu.in, right-click the
+ *      photo and "Copy image address". Only piemr.edu.in and sih.gov.in
+ *      are permitted (see next.config.mjs); add any other host there
+ *      first or the image will not render.
+ *
+ * Either way, if the image is missing or fails to load, a styled initials
+ * badge is shown instead — the card never breaks.
+ *
+ * Photos are cropped square and centred, so a portrait headshot works
+ * without editing.
  *
  * BIOGRAPHIES. Every line below is drawn from a public source, cited
  * against each person. Please have each of them confirm their own entry
@@ -20,7 +31,8 @@ export interface LeaderProfile {
   name: string;
   title: string;
   role: string;
-  /** Path under /public, or null to render the initials badge. */
+  /** '/leadership/<file>' under public/, an https URL, or null for the
+   *  initials badge. */
   photo: string | null;
   bio: string;
   highlights: string[];
@@ -33,7 +45,7 @@ export const LEADERSHIP: LeaderProfile[] = [
     name: 'Prof. (Dr.) Manojkumar Deshpande',
     title: 'Senior Director, PIEMR',
     role: 'Patron',
-    photo: null, // → '/leadership/manojkumar-deshpande.jpg'
+    photo: null, // → '/leadership/manojkumar-deshpande.jpg' or an https URL
     bio:
       'Senior Director of the Prestige Institute of Engineering Management & Research, ' +
       'Indore, where he leads the institute’s academic direction and its participation ' +
@@ -52,7 +64,7 @@ export const LEADERSHIP: LeaderProfile[] = [
     // honorific with her before this goes public.
     title: 'SIH Single Point of Contact (SPOC), PIEMR',
     role: 'SIH SPOC',
-    photo: null, // → '/leadership/sadhana-tiwari.jpg'
+    photo: null, // → '/leadership/sadhana-tiwari.jpg' or an https URL
     bio:
       'The institute’s Single Point of Contact for the Smart India Hackathon. The SPOC ' +
       'runs the internal round, registers PIEMR’s shortlisted teams on the national ' +

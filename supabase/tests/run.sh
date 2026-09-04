@@ -68,4 +68,7 @@ psql -q -d piemr -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/40_judging.sql"
 echo "--- Team-level problem statement"
 psql -q -d piemr -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/50_team_ps.sql"
 
+echo "--- Function execution grants"
+psql -q -d piemr -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/60_function_grants.sql"
+
 echo "--- done"

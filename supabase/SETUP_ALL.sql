@@ -2,12 +2,7 @@
 -- PIEMR Hackathon Platform — complete database setup
 --
 -- Paste this ENTIRE file into the Supabase SQL Editor and press Run.
--- It contains every migration in the correct order, so there is nothing
--- to sequence by hand.
---
--- Safe to run more than once. Every statement is idempotent: existing
--- objects are left alone and missing ones are created, so if a previous
--- run failed part-way you can simply run this again.
+-- Contains every migration in order; safe to run more than once.
 -- =====================================================================
 
 
@@ -2339,3 +2334,182 @@ alter table public.problem_statements
 
 create index if not exists problem_statements_theme_idx
   on public.problem_statements (theme) where is_active;
+
+-- ###################################################################
+-- ## 0009_harden_functions.sql
+-- ###################################################################
+
+-- =====================================================================
+-- Lock down function execution.
+--
+-- Supabase grants EXECUTE on new functions in `public` to anon and
+-- authenticated by default, so `revoke ... from public` — which only
+-- drops the PUBLIC grant — left every function reachable over
+-- /rest/v1/rpc/. Two of those are genuinely dangerous:
+--
+--   allocate_team_short_id()  hands out the next 3-digit Team ID from a
+--                             sequence. Anyone could call it in a loop
+--                             and burn through 001-999, after which no
+--                             team can register at all.
+--   write_audit(...)          appends to the audit trail. Anyone could
+--                             forge entries, which is exactly the record
+--                             you would want to trust after an incident.
+--
+-- The RLS helper predicates stay executable on purpose: policies are
+-- evaluated as the calling role, so revoking EXECUTE from them would
+-- break every policy that uses one. They reveal only the caller's own
+-- role, which the caller already knows.
+-- =====================================================================
+
+-- ------------------------------------------- trigger functions: internal
+-- Never called directly; only fired by triggers, which run as the table
+-- owner regardless of these grants.
+revoke all on function public.touch_updated_at() from public, anon, authenticated;
+revoke all on function public.enforce_team_size() from public, anon, authenticated;
+revoke all on function public.handle_new_auth_user() from public, anon, authenticated;
+
+-- A mutable search_path in a function that runs as its owner lets a
+-- caller who can create objects shadow the tables it references.
+alter function public.touch_updated_at() set search_path = public, pg_temp;
+alter function public.enforce_team_size() set search_path = public, pg_temp;
+
+-- --------------------------------------------------- privileged helpers
+-- Called only from inside other SECURITY DEFINER functions, which run as
+-- the owner and so keep working with no grant of their own.
+revoke all on function public.allocate_team_short_id() from public, anon, authenticated;
+revoke all on function public.write_audit(text, text, text, jsonb)
+  from public, anon, authenticated;
+
+-- ------------------------------------------------ authenticated-only RPC
+-- Each of these already refuses an anonymous caller internally; this
+-- stops the request reaching them at all.
+revoke all on function public.register_team(jsonb) from public, anon;
+revoke all on function public.update_team(jsonb) from public, anon;
+revoke all on function public.submit_idea(jsonb) from public, anon;
+revoke all on function public.save_scores(jsonb) from public, anon;
+revoke all on function public.set_result(jsonb) from public, anon;
+revoke all on function public.judge_lookup_team(text) from public, anon;
+
+grant execute on function public.register_team(jsonb)      to authenticated;
+grant execute on function public.update_team(jsonb)        to authenticated;
+grant execute on function public.submit_idea(jsonb)        to authenticated;
+grant execute on function public.save_scores(jsonb)        to authenticated;
+grant execute on function public.set_result(jsonb)         to authenticated;
+grant execute on function public.judge_lookup_team(text)   to authenticated;
+
+-- ------------------------------------------------------ deliberately open
+-- The landing page and results page are served to logged-out visitors.
+-- Both return aggregates or published names only, never a table row.
+grant execute on function public.public_stats()   to anon, authenticated;
+grant execute on function public.public_results() to anon, authenticated;
+
+-- --------------------------------------------------------- RLS helpers
+-- Left executable because policies need them. Stated explicitly so the
+-- next person does not "tidy" them away and silently break access.
+grant execute on function public.current_app_role()              to anon, authenticated;
+grant execute on function public.is_super_admin()                to anon, authenticated;
+grant execute on function public.is_admin_tier()                 to anon, authenticated;
+grant execute on function public.is_spoc()                       to anon, authenticated;
+grant execute on function public.is_roster_viewer()              to anon, authenticated;
+grant execute on function public.owns_team(uuid)                 to anon, authenticated;
+grant execute on function public.registration_editable(uuid)     to anon, authenticated;
+grant execute on function public.submissions_editable()          to anon, authenticated;
+
+-- Stop the same default from re-opening anything created from here on.
+alter default privileges in schema public revoke execute on functions from anon;
+
+-- ###################################################################
+-- ## 0010_performance.sql
+-- ###################################################################
+
+-- =====================================================================
+-- Query performance.
+--
+-- Two real costs, both flagged by Supabase's advisor:
+--
+-- 1. Eight policies call auth.uid() bare, so Postgres re-evaluates it
+--    once per row scanned rather than once per statement. Wrapping it as
+--    (select auth.uid()) turns it into an InitPlan, evaluated once. On a
+--    227-row problem statement list or a growing members table this is
+--    the difference between one call and hundreds.
+--
+-- 2. Five foreign keys have no covering index, so the planner falls back
+--    to a sequential scan when joining or when checking a delete.
+--
+-- The advisor also reports ~150 "multiple permissive policies". That is
+-- inherent to having one policy per audience (own / staff / admin), which
+-- is what makes them readable and safe to change. Merging them into one
+-- OR-ed expression per table would save little at this scale and would
+-- make the security boundary much harder to reason about, so it is left
+-- alone deliberately.
+-- =====================================================================
+
+-- ------------------------------------------------- auth.uid() InitPlans
+drop policy if exists users_select_self on public.users;
+create policy users_select_self on public.users
+  for select using (id = (select auth.uid()));
+
+drop policy if exists users_update_self on public.users;
+create policy users_update_self on public.users
+  for update using (id = (select auth.uid()))
+  with check (id = (select auth.uid()));
+
+drop policy if exists teams_select_own on public.teams;
+create policy teams_select_own on public.teams
+  for select using (created_by = (select auth.uid()));
+
+drop policy if exists teams_insert_own on public.teams;
+create policy teams_insert_own on public.teams
+  for insert with check (created_by = (select auth.uid()));
+
+drop policy if exists teams_update_own on public.teams;
+create policy teams_update_own on public.teams
+  for update using (
+    created_by = (select auth.uid()) and public.registration_editable(id)
+  )
+  with check (created_by = (select auth.uid()));
+
+drop policy if exists scores_select_own_judge on public.scores;
+create policy scores_select_own_judge on public.scores
+  for select using (judge_id = (select auth.uid()));
+
+drop policy if exists scores_write_own_judge on public.scores;
+create policy scores_write_own_judge on public.scores
+  for all using (
+    judge_id = (select auth.uid()) and public.current_app_role() = 'judge'
+  )
+  with check (
+    judge_id = (select auth.uid()) and public.current_app_role() = 'judge'
+  );
+
+drop policy if exists audit_select_own on public.audit_log;
+create policy audit_select_own on public.audit_log
+  for select using (
+    public.is_admin_tier() and actor_id = (select auth.uid())
+  );
+
+-- -------------------------------------------- covering foreign key indexes
+create index if not exists scores_criterion_idx
+  on public.scores (criterion_id);
+create index if not exists settings_updated_by_idx
+  on public.settings (updated_by);
+create index if not exists team_ps_selection_ps_idx
+  on public.team_ps_selection (ps_id);
+create index if not exists teams_tentative_ps_idx
+  on public.teams (tentative_ps_id);
+create index if not exists users_created_by_idx
+  on public.users (created_by);
+
+-- ---------------------------------------------------- hot-path indexes
+-- Every judge lookup is by the 3-digit ID, and the admin results screen
+-- joins scores back to submissions.
+create index if not exists teams_short_id_idx
+  on public.teams (team_id_short);
+create index if not exists scores_submission_idx
+  on public.scores (submission_id);
+create index if not exists members_team_lead_idx
+  on public.members (team_id, is_lead);
+
+-- Indexes the advisor reports as never used are kept: it is measuring a
+-- database with one team in it, and each of these covers a query the
+-- event will actually run once teams and scores exist.
