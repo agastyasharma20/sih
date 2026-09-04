@@ -23,11 +23,12 @@ export function MemberFields({
   const {
     register,
     formState: { errors },
-    watch,
   } = useFormContext<RegistrationInput>();
 
   const memberErrors = errors.members?.[index];
-  const isLead = watch(`members.${index}.is_lead`);
+  // Row 1 is always the team lead — both on registration (the signed-in
+  // account) and on edit, where members load lead-first.
+  const isLead = index === 0;
 
   const errorFor = (field: keyof NonNullable<typeof memberErrors>) =>
     (memberErrors as Record<string, { message?: string }> | undefined)?.[field as string]?.message;
@@ -51,8 +52,6 @@ export function MemberFields({
           </span>
         )}
       </div>
-
-      <input type="hidden" {...register(`members.${index}.is_lead`)} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">

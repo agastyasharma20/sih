@@ -4,9 +4,11 @@ Registration, judging and results portal for the internal hackathon that
 selects Prestige Institute of Engineering Management & Research (Indore)
 teams for the Smart India Hackathon.
 
-**This pass ships Module 1 (Team Registration) end-to-end.** Modules 2–5
-are specified and their tables, roles and policies already exist, so
-switching them on needs no data migration.
+**Module 1 (Team Registration) is complete end-to-end**, along with the
+operational tooling needed to actually run the round: problem-statement
+import, roster export, registration locking, analytics, and the audit
+trail. Modules 2–4 are specified and their tables, roles and policies
+already exist, so switching them on needs no data migration.
 
 ---
 
@@ -57,20 +59,40 @@ registration on. None of those are set in code.
 
 ---
 
-## Verifying the database layer
+## Tests
 
-The migrations and their security policies are covered by a suite that
-spins up a throwaway Postgres, applies every migration, and asserts the
-Module 1 rules and the RLS boundaries:
+Two suites, both runnable without any cloud dependency.
 
 ```bash
-./supabase/tests/run.sh      # needs a local PostgreSQL 16 binary
+npm test                     # unit tests (validation, CSV, analytics)
+./supabase/tests/run.sh      # migrations + RLS, needs a local PostgreSQL 16
 ```
 
-It checks, among others, that a team of five is refused, that a team with
-no female member is refused, that an enrollment number registered on one
-team cannot be reused on another, that a coordinator reads the roster but
-**zero** score rows, and that an admin cannot see the super-admin account.
+**Unit tests** cover the logic most likely to break silently: the shared
+registration schema (team size, the female-member rule, domain checks,
+in-form duplicates, and the two form-encoding cases below), the CSV
+reader used by the problem-statement importer (quoted fields, embedded
+commas and newlines, doubled quotes, CRLF, BOM, tab-separated paste), and
+the analytics aggregations.
+
+**Database tests** spin up a throwaway Postgres, apply every migration in
+order, and assert the real behaviour: a team of five is refused, a team
+with no female member is refused, an enrollment number registered on one
+team cannot be reused on another, a coordinator reads the roster but
+**zero** score rows, an admin cannot see the super-admin account, a
+coordinator cannot write a score or a problem statement, and locking one
+team stops its lead editing while other teams carry on.
+
+Two bugs found this way, both of which would have blocked every real
+submission, are worth knowing about if you touch the form:
+
+- A hidden input serialised `is_lead` as the string `"true"`, which
+  `z.boolean()` rejects. The lead is now derived from the row position,
+  and the schema accepts either form.
+- Collapsing the optional secondary-mentor section left blank strings
+  behind, so validation failed on three fields the user could not see.
+  A blank mentor is now treated as absent, and completeness is checked
+  only once the section has been started.
 
 ---
 
@@ -187,24 +209,55 @@ src/
     problem-statements/         public, filterable PS list
     dashboard/
       team/                     team lead: view + edit
-      admin/                    overview, teams, settings, accounts
-      coordinator/              roster, no marks
+      admin/
+        page.tsx                overview + readiness warnings
+        teams/                  rosters, per-team and bulk locking, export
+        analytics/              charts and data-quality checks
+        problem-statements/     bulk import and the active list
+        settings/               dates, switches, account creation
+        audit/                  activity trail
+      coordinator/              roster + export, no marks
       judge/                    rubric; scoring lands here in Module 3
     api/
-      teams/register            POST — Module 1 write path
-      teams/update              PUT  — team lead edits
+      teams/register            POST  — Module 1 write path
+      teams/update              PUT   — team lead edits
       auth/otp, auth/password   rate-limited sign-in
-      admin/users, admin/settings
+      admin/users               account provisioning
+      admin/settings            event configuration
+      admin/problem-statements  single add + bulk CSV import
+      admin/teams               lock / unlock
+      admin/teams/export        roster CSV
   lib/
     validation/registration.ts  the Zod schema shared by form and API
+    csv.ts                      delimited reader/writer for import + export
+    analytics.ts                pure aggregations for the dashboard
     supabase/                   browser, server, service-role clients
     auth.ts                     server-side role resolution
     email.ts, rate-limit.ts
 supabase/
   migrations/                   schema, RLS, functions, seed, grants
   tests/                        migration + policy test suite
+tests/                          unit tests
 scripts/seed-super-admin.ts
 ```
+
+---
+
+## Running the event
+
+1. **Import the problem statements.** Admin → Problem statements. Paste
+   CSV or spreadsheet rows with a `ps_id,title,category` header; `theme`
+   and `description` are optional. Re-importing the same `ps_id` updates
+   it rather than duplicating. Until at least one statement exists, teams
+   can only choose “TBD”, and the admin overview says so.
+2. **Set the dates and open registration** in Settings.
+3. **Watch Analytics** for teams with the wrong roster size, and the
+   female-member share.
+4. **Export the roster** as CSV from the Teams screen (coordinators can
+   too — it carries no marks).
+5. **Lock teams** individually or in bulk when the roster is settled.
+   Locking is enforced in the database, so a locked team cannot be edited
+   through the API either.
 
 ---
 
@@ -233,6 +286,7 @@ These are open in the spec and deliberately not baked in:
   `marking_criteria`, leave per-criterion remarks.
 - **Module 4** — results publishing; leads see their own verdict once
   `results.is_published` is set.
-- **Module 5** — PS bulk import and the analytics dashboard
-  (registrations over time, PS popularity, branch/year/gender
-  distribution, judge scoring spread, funnel).
+- **Module 5** — PS bulk import and registration analytics are **done**.
+  Still to come once judging exists: PS popularity, judge scoring spread
+  (to flag outlier judges), and the full registered → submitted →
+  selected funnel.

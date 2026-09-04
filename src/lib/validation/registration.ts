@@ -24,8 +24,19 @@ const phone = z
   .transform((v) => v.replace(/\D/g, ''))
   .refine((v) => v.length === 10, 'Enter a 10-digit phone number');
 
+/**
+ * Form controls hand back the strings "true"/"false" rather than booleans,
+ * and z.coerce.boolean() would read "false" as true. A union keeps the
+ * input type concrete, which z.preprocess would erase — React Hook Form
+ * derives its field paths from that type.
+ */
+const formBoolean = z
+  .union([z.boolean(), z.literal('true'), z.literal('false')])
+  .transform((value) => value === true || value === 'true')
+  .default(false);
+
 export const memberSchema = z.object({
-  is_lead: z.boolean().default(false),
+  is_lead: formBoolean,
   full_name: z.string().trim().min(2, 'Enter the full name'),
   gender: z.enum(['male', 'female', 'other'], { message: 'Select a gender' }),
   branch: z.string().trim().min(1, 'Select a branch'),
@@ -60,14 +71,33 @@ export const primaryMentorSchema = mentorSchema.extend({
   affiliation: z.literal('piemr').default('piemr'),
 });
 
-/** Optional secondary mentor: PIEMR or industry, so any valid address. */
-export const secondaryMentorSchema = mentorSchema.extend({
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, 'Enter a valid email address'),
+/**
+ * Optional secondary mentor: PIEMR or industry, so any valid address.
+ *
+ * Every field tolerates a blank, because collapsing the optional section
+ * leaves empty strings behind rather than removing the object. Completeness
+ * is enforced in the root superRefine, but only once the user has actually
+ * entered something — otherwise the form would deadlock on errors attached
+ * to fields nobody can see.
+ */
+export const secondaryMentorSchema = z.object({
+  full_name: z.string().trim().default(''),
+  contact: z.string().trim().default(''),
+  email: z.string().trim().toLowerCase().default(''),
+  affiliation: z.enum(['piemr', 'industry']).default('industry'),
 });
+
+/** True once any part of the optional mentor section has been filled in. */
+export function isMentorProvided(mentor: {
+  full_name?: string;
+  contact?: string;
+  email?: string;
+} | null | undefined): boolean {
+  if (!mentor) return false;
+  return [mentor.full_name, mentor.contact, mentor.email].some(
+    (value) => String(value ?? '').trim() !== '',
+  );
+}
 
 export const registrationSchema = z
   .object({
@@ -80,9 +110,35 @@ export const registrationSchema = z
       .array(memberSchema)
       .length(TEAM_SIZE, `A team must have exactly ${TEAM_SIZE} members`),
     primary_mentor: primaryMentorSchema,
-    secondary_mentor: secondaryMentorSchema.optional().nullable(),
+    secondary_mentor: secondaryMentorSchema.nullable().default(null),
   })
   .superRefine((data, ctx) => {
+    // Optional mentor: silent while untouched, fully checked once started.
+    const secondary = data.secondary_mentor;
+    if (isMentorProvided(secondary)) {
+      if (secondary!.full_name.trim().length < 2) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['secondary_mentor', 'full_name'],
+          message: 'Enter the mentor name',
+        });
+      }
+      if (secondary!.contact.replace(/\D/g, '').length !== 10) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['secondary_mentor', 'contact'],
+          message: 'Enter a 10-digit contact number',
+        });
+      }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(secondary!.email)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['secondary_mentor', 'email'],
+          message: 'Enter a valid email address',
+        });
+      }
+    }
+
     const femaleCount = data.members.filter((m) => m.gender === 'female').length;
     if (femaleCount < MIN_FEMALE_MEMBERS) {
       ctx.addIssue({

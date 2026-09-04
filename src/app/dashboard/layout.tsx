@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireProfile, isAdminTier } from '@/lib/auth';
+import { requireProfile, isAdminTier, isSpoc } from '@/lib/auth';
 import { Brand, BrandFooter } from '@/components/Brand';
 
 export const dynamic = 'force-dynamic';
@@ -18,8 +18,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
     links.push(
       { href: '/dashboard/admin', label: 'Overview' },
       { href: '/dashboard/admin/teams', label: 'Teams' },
-      { href: '/dashboard/admin/settings', label: 'Settings' },
+      { href: '/dashboard/admin/analytics', label: 'Analytics' },
     );
+    // Operational screens belong to the SPOC; a Sr. Director is read-heavy.
+    if (isSpoc(profile)) {
+      links.push(
+        { href: '/dashboard/admin/problem-statements', label: 'Problem statements' },
+        { href: '/dashboard/admin/settings', label: 'Settings' },
+      );
+    }
+    links.push({ href: '/dashboard/admin/audit', label: 'Audit log' });
   } else if (profile.role === 'coordinator') {
     links.push({ href: '/dashboard/coordinator', label: 'Team roster' });
   } else if (profile.role === 'judge') {
@@ -34,7 +42,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
           <div className="flex items-center gap-8">
             <Brand />
-            <nav className="flex items-center gap-5 text-sm font-medium">
+            <nav className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm font-medium">
               {links.map((link) => (
                 <Link
                   key={link.href}

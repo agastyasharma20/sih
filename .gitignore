@@ -11,3 +11,9 @@ next-env.d.ts
 .DS_Store
 .vercel
 coverage/
+
+# local scratch
+dev*.log
+probe*.sh
+probe-results.txt
+.devprobe.log

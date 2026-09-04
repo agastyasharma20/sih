@@ -59,4 +59,7 @@ psql -q -d piemr -f "$ROOT/supabase/tests/10_registration.sql"
 echo "--- Row-Level Security"
 psql -q -d piemr -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/20_rls.sql"
 
+echo "--- Admin operations"
+psql -q -d piemr -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/30_admin_ops.sql"
+
 echo "--- done"

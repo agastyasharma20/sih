@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { requireProfile, isAdminTier } from '@/lib/auth';
+import { requireProfile, isAdminTier, isSpoc } from '@/lib/auth';
+import { TeamControls, TeamBulkActions } from '@/components/admin/TeamControls';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -22,11 +23,14 @@ export default async function AdminTeamsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Registered teams</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          {teams?.length ?? 0} team{(teams?.length ?? 0) === 1 ? '' : 's'} registered.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Registered teams</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            {teams?.length ?? 0} team{(teams?.length ?? 0) === 1 ? '' : 's'} registered.
+          </p>
+        </div>
+        <TeamBulkActions canLock={isSpoc(profile)} />
       </div>
 
       {(teams ?? []).length === 0 ? (
@@ -65,6 +69,13 @@ export default async function AdminTeamsPage() {
                       Locked
                     </span>
                   )}
+                  <span className="ml-auto">
+                    <TeamControls
+                      teamId={team.id}
+                      locked={Boolean(team.registration_locked_at)}
+                      canLock={isSpoc(profile)}
+                    />
+                  </span>
                 </summary>
 
                 <div className="mt-5 overflow-x-auto border-t border-slate-200 pt-4 dark:border-slate-800">

@@ -1,5 +1,6 @@
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { Download } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Team roster · PIEMR Hackathon' };
@@ -24,12 +25,18 @@ export default async function CoordinatorDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Team roster</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Contact details and selection status for documentation. Judge scores are not part of
-          this view.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Team roster</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Contact details and selection status for documentation. Judge scores are not part of
+            this view.
+          </p>
+        </div>
+        <a href="/api/admin/teams/export" className="btn-secondary py-1.5 text-xs">
+          <Download className="h-3.5 w-3.5" />
+          Export roster (CSV)
+        </a>
       </div>
 
       <div className="card overflow-x-auto">

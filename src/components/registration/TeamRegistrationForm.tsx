@@ -9,6 +9,7 @@ import { AlertCircle, CheckCircle2, Loader2, UserCheck, Users } from 'lucide-rea
 import {
   registrationSchema,
   emptyMember,
+  isMentorProvided,
   type RegistrationInput,
   type RegistrationValues,
 } from '@/lib/validation/registration';
@@ -77,12 +78,14 @@ export function TeamRegistrationForm({
     setFormError(null);
     setEmailWarning(null);
 
-    // The secondary mentor is optional; drop it entirely when collapsed so
-    // an empty object never reaches the server schema.
+    // The secondary mentor is optional; drop it entirely when collapsed or
+    // left blank so an empty object never reaches the server.
     const payload = {
       ...values,
       secondary_mentor:
-        showSecondary && values.secondary_mentor?.full_name ? values.secondary_mentor : null,
+        showSecondary && isMentorProvided(values.secondary_mentor)
+          ? values.secondary_mentor
+          : null,
     };
 
     try {
@@ -98,27 +101,30 @@ export function TeamRegistrationForm({
       const result = await response.json();
 
       if (!response.ok || !result.ok) {
-        // Map server-side collisions (another team already holds this
-        // enrollment/email/phone) back onto the exact field.
+        // A uniqueness collision comes back naming the field and the value
+        // that clashed. Point it at the member row holding that value so the
+        // error lands on the input the user has to change, not on the form.
         if (result.fieldErrors) {
-          for (const [path, message] of Object.entries(
+          for (const [field, message] of Object.entries(
             result.fieldErrors as Record<string, string>,
           )) {
-            const target = path.includes('.')
-              ? path
-              : members.findIndex(
-                    (m) =>
-                      String(m?.[path as keyof typeof m] ?? '').toLowerCase() ===
-                      String(result.value ?? '').toLowerCase(),
-                  ) >= 0
-                ? `members.${members.findIndex(
-                    (m) =>
-                      String(m?.[path as keyof typeof m] ?? '').toLowerCase() ===
-                      String(result.value ?? '').toLowerCase(),
-                  )}.${path}`
-                : path;
+            if (field.includes('.')) {
+              setError(field as never, { type: 'server', message });
+              continue;
+            }
 
-            setError(target as never, { type: 'server', message });
+            const rowIndex = result.value
+              ? members.findIndex(
+                  (member) =>
+                    String(member?.[field as keyof typeof member] ?? '').toLowerCase() ===
+                    String(result.value).toLowerCase(),
+                )
+              : -1;
+
+            setError(
+              (rowIndex >= 0 ? `members.${rowIndex}.${field}` : field) as never,
+              { type: 'server', message },
+            );
           }
         }
 

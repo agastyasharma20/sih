@@ -31,6 +31,10 @@ export default async function AdminDashboard() {
     { label: 'Problem statements', value: ps.count ?? 0 },
   ];
 
+  // Without at least one problem statement, the registration dropdown can
+  // only offer "TBD" — worth flagging prominently to the SPOC.
+  const needsProblemStatements = (ps.count ?? 0) === 0;
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -53,6 +57,21 @@ export default async function AdminDashboard() {
           Registration {registrationOpen ? 'open' : 'closed'}
         </span>
       </div>
+
+      {needsProblemStatements && isSpoc(profile) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/40">
+          <p className="font-semibold text-amber-900 dark:text-amber-100">
+            No problem statements imported yet
+          </p>
+          <p className="mt-1 text-amber-800 dark:text-amber-200">
+            Teams can register, but their problem statement choice can only be
+            &ldquo;TBD&rdquo; until the list is imported.{' '}
+            <Link href="/dashboard/admin/problem-statements" className="font-semibold underline">
+              Import the list
+            </Link>
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
@@ -83,11 +102,21 @@ export default async function AdminDashboard() {
               </div>
             ))}
           </dl>
-          {isSpoc(profile) && (
-            <Link href="/dashboard/admin/settings" className="btn-secondary mt-5">
-              Edit event settings
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link href="/dashboard/admin/analytics" className="btn-secondary">
+              View analytics
             </Link>
-          )}
+            {isSpoc(profile) && (
+              <>
+                <Link href="/dashboard/admin/settings" className="btn-secondary">
+                  Edit event settings
+                </Link>
+                <Link href="/dashboard/admin/problem-statements" className="btn-secondary">
+                  Manage problem statements
+                </Link>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="card">
