@@ -142,6 +142,7 @@ feedback; the database copy is the one that counts.
 | Phone unique across **all** teams | in-form only | ✓ | ✓ + unique index |
 | Email unique across **all** teams | in-form only | ✓ | ✓ + unique index |
 | Registration window open | ✓ | — | ✓ |
+| Tentative PS is on the active list | ✓ | ✓ | ✓ |
 | One team per team lead | — | — | ✓ |
 
 `public.register_team(jsonb)` performs the whole registration in one

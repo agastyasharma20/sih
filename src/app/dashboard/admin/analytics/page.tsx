@@ -25,8 +25,8 @@ export default async function AnalyticsPage() {
   const supabase = createClient();
 
   const [{ data: teams }, { data: members }] = await Promise.all([
-    supabase.from('teams').select('id, created_at, status, registration_locked_at'),
-    supabase.from('members').select('branch, year, gender, team_id, tentative_ps_id'),
+    supabase.from('teams').select('id, created_at, status, registration_locked_at, tentative_ps_id'),
+    supabase.from('members').select('branch, year, gender, team_id'),
   ]);
 
   const teamRows = (teams ?? []) as TeamRow[];
@@ -37,7 +37,7 @@ export default async function AnalyticsPage() {
   const years = distribution(memberRows, (m) => m.year);
   const genders = genderSplit(memberRows);
   const completeness = incompleteTeams(memberRows, teamRows.length, TEAM_SIZE);
-  const psSplit = psDecisionSplit(memberRows);
+  const psSplit = psDecisionSplit(teamRows);
 
   const femaleCount = genders.find((g) => g.name === 'Female')?.value ?? 0;
   const femaleShare = memberRows.length

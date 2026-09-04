@@ -4,22 +4,14 @@ import { useFormContext } from 'react-hook-form';
 import { Crown } from 'lucide-react';
 import { BRANCHES, YEARS, GENDERS } from '@/lib/constants';
 import type { RegistrationInput } from '@/lib/validation/registration';
-import type { ProblemStatement } from '@/lib/types';
 
 interface MemberFieldsProps {
   index: number;
-  problemStatements: ProblemStatement[];
-  psListPublished: boolean;
   /** The lead's email is fixed to the signed-in account. */
   lockLeadEmail: boolean;
 }
 
-export function MemberFields({
-  index,
-  problemStatements,
-  psListPublished,
-  lockLeadEmail,
-}: MemberFieldsProps) {
+export function MemberFields({ index, lockLeadEmail }: MemberFieldsProps) {
   const {
     register,
     formState: { errors },
@@ -188,25 +180,6 @@ export function MemberFields({
           {errorFor('phone') && <p className="field-error">{errorFor('phone')}</p>}
         </div>
 
-        <div className="sm:col-span-2">
-          <label className="field-label" htmlFor={`m${index}-ps`}>
-            Tentative problem statement
-          </label>
-          <select
-            id={`m${index}-ps`}
-            className="field-input"
-            {...register(`members.${index}.tentative_ps_id`)}
-          >
-            <option value="TBD">
-              {psListPublished ? 'Not decided yet (TBD)' : 'TBD — list not published yet'}
-            </option>
-            {problemStatements.map((ps) => (
-              <option key={ps.id} value={ps.ps_id}>
-                {ps.ps_id} — {ps.title}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
     </div>
   );

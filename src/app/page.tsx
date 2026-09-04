@@ -3,6 +3,7 @@ import { ClipboardList, Gavel, Trophy, Users2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getSessionProfile, dashboardPathFor } from '@/lib/auth';
 import { Hero } from '@/components/landing/Hero';
+import { Leadership } from '@/components/landing/Leadership';
 import { Brand, BrandFooter } from '@/components/Brand';
 import { formatEventDate } from '@/lib/utils';
 
@@ -126,7 +127,9 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        <section className="border-y border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+        <Leadership />
+
+        <section className="bg-slate-50 dark:bg-slate-900/40">
           <div className="mx-auto grid max-w-6xl gap-8 px-6 py-16 sm:grid-cols-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">

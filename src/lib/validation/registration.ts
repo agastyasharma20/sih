@@ -49,9 +49,6 @@ export const memberSchema = z.object({
     .max(30, 'Enrollment number looks too long'),
   email: institutionalEmail(),
   phone,
-  /** Dropdown value from problem_statements.ps_id, or 'TBD' before the
-   *  list is published. Never free text. */
-  tentative_ps_id: z.string().trim().default('TBD'),
 });
 
 export const mentorSchema = z.object({
@@ -106,6 +103,13 @@ export const registrationSchema = z
       .trim()
       .min(3, 'Team name must be at least 3 characters')
       .max(60, 'Team name must be 60 characters or fewer'),
+    /**
+     * One problem statement for the whole team, chosen from
+     * problem_statements.ps_id — never free text. 'TBD' is valid: the
+     * list is often unpublished when registration opens, and the final
+     * choice is locked in at submission time (Module 2) anyway.
+     */
+    tentative_ps_id: z.string().trim().default('TBD'),
     members: z
       .array(memberSchema)
       .length(TEAM_SIZE, `A team must have exactly ${TEAM_SIZE} members`),
@@ -197,7 +201,6 @@ export const emptyMember = (isLead = false): MemberInput => ({
   enrollment_number: '',
   email: '',
   phone: '',
-  tentative_ps_id: 'TBD',
 });
 
 /** Flatten Zod issues into `path -> message` for API error responses. */

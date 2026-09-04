@@ -16,7 +16,7 @@ export default async function TeamDashboard() {
 
   const { data: team } = await supabase
     .from('teams')
-    .select('id, team_id_short, team_name, status, registration_locked_at, created_at')
+    .select('id, team_id_short, team_name, status, registration_locked_at, created_at, tentative_ps_id')
     .eq('created_by', profile.id)
     .maybeSingle();
 
@@ -62,9 +62,7 @@ export default async function TeamDashboard() {
   const [{ data: members }, { data: mentors }] = await Promise.all([
     supabase
       .from('members')
-      .select(
-        'is_lead, full_name, gender, branch, year, enrollment_number, email, phone, tentative_ps_id',
-      )
+      .select('is_lead, full_name, gender, branch, year, enrollment_number, email, phone')
       .eq('team_id', team.id)
       .order('is_lead', { ascending: false })
       .order('created_at'),
@@ -80,6 +78,9 @@ export default async function TeamDashboard() {
 
   const defaults: RegistrationInput = {
     team_name: team.team_name,
+    tentative_ps_id: team.tentative_ps_id
+      ? (psById.get(team.tentative_ps_id) ?? 'TBD')
+      : 'TBD',
     members: (members ?? []).map((m) => ({
       is_lead: m.is_lead,
       full_name: m.full_name,
@@ -89,7 +90,6 @@ export default async function TeamDashboard() {
       enrollment_number: m.enrollment_number,
       email: m.email,
       phone: m.phone,
-      tentative_ps_id: m.tentative_ps_id ? (psById.get(m.tentative_ps_id) ?? 'TBD') : 'TBD',
     })),
     primary_mentor: {
       full_name: primary?.full_name ?? '',

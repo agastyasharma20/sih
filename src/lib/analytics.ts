@@ -11,7 +11,6 @@ export interface MemberRow {
   year: string;
   gender: Gender;
   team_id: string;
-  tentative_ps_id: string | null;
 }
 
 export interface TeamRow {
@@ -19,6 +18,7 @@ export interface TeamRow {
   created_at: string;
   status: string;
   registration_locked_at: string | null;
+  tentative_ps_id?: string | null;
 }
 
 export interface Slice {
@@ -87,18 +87,12 @@ export function incompleteTeams(members: MemberRow[], teamCount: number, teamSiz
   return { short, complete: perTeam.size - short, missing: teamCount - perTeam.size };
 }
 
-/** How many teams have settled on a problem statement versus left it TBD. */
-export function psDecisionSplit(members: MemberRow[]): { decided: number; tbd: number } {
-  const perTeam = new Map<string, boolean>();
-
-  for (const member of members) {
-    const decided = perTeam.get(member.team_id) || member.tentative_ps_id !== null;
-    perTeam.set(member.team_id, decided);
-  }
-
-  const values = [...perTeam.values()];
-  return {
-    decided: values.filter(Boolean).length,
-    tbd: values.filter((v) => !v).length,
-  };
+/**
+ * How many teams have settled on a problem statement versus left it TBD.
+ * Reads the team-level choice — it used to be recorded per member, which
+ * allowed six different answers for one team.
+ */
+export function psDecisionSplit(teams: TeamRow[]): { decided: number; tbd: number } {
+  const decided = teams.filter((team) => Boolean(team.tentative_ps_id)).length;
+  return { decided, tbd: teams.length - decided };
 }

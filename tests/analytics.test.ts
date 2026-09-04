@@ -6,6 +6,7 @@ import {
   incompleteTeams,
   psDecisionSplit,
   type MemberRow,
+  type TeamRow,
 } from '@/lib/analytics';
 
 const member = (over: Partial<MemberRow> = {}): MemberRow => ({
@@ -13,6 +14,14 @@ const member = (over: Partial<MemberRow> = {}): MemberRow => ({
   year: '3rd Year',
   gender: 'male',
   team_id: 't1',
+  ...over,
+});
+
+const team = (over: Partial<TeamRow> = {}): TeamRow => ({
+  id: 't1',
+  created_at: '2026-01-01T00:00:00Z',
+  status: 'submitted',
+  registration_locked_at: null,
   tentative_ps_id: null,
   ...over,
 });
@@ -77,12 +86,16 @@ describe('incompleteTeams', () => {
 });
 
 describe('psDecisionSplit', () => {
-  it('treats a team as decided when any member picked a statement', () => {
-    const members = [
-      member({ team_id: 'a', tentative_ps_id: 'ps-1' }),
-      member({ team_id: 'a', tentative_ps_id: null }),
-      member({ team_id: 'b', tentative_ps_id: null }),
+  it('counts one choice per team, from the team row', () => {
+    const teams = [
+      team({ id: 'a', tentative_ps_id: 'ps-1' }),
+      team({ id: 'b', tentative_ps_id: null }),
+      team({ id: 'c', tentative_ps_id: 'ps-2' }),
     ];
-    expect(psDecisionSplit(members)).toEqual({ decided: 1, tbd: 1 });
+    expect(psDecisionSplit(teams)).toEqual({ decided: 2, tbd: 1 });
+  });
+
+  it('reports nothing decided for an empty round', () => {
+    expect(psDecisionSplit([])).toEqual({ decided: 0, tbd: 0 });
   });
 });

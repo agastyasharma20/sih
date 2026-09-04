@@ -32,6 +32,7 @@ function buildDefaults(leadEmail: string, leadName: string | null): Registration
 
   return {
     team_name: '',
+    tentative_ps_id: 'TBD',
     members,
     primary_mentor: { full_name: '', contact: '', email: '', affiliation: 'piemr' },
     secondary_mentor: null,
@@ -218,17 +219,47 @@ export function TeamRegistrationForm({
         {/* ------------------------------------------------- team name */}
         <section className="card">
           <h2 className="text-lg font-bold">Team details</h2>
-          <div className="mt-4 max-w-md">
-            <label className="field-label" htmlFor="team_name">
-              Team name
-            </label>
-            <input
-              id="team_name"
-              className="field-input"
-              aria-invalid={Boolean(errors.team_name)}
-              {...register('team_name')}
-            />
-            {errors.team_name && <p className="field-error">{errors.team_name.message}</p>}
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="field-label" htmlFor="team_name">
+                Team name
+              </label>
+              <input
+                id="team_name"
+                className="field-input"
+                aria-invalid={Boolean(errors.team_name)}
+                {...register('team_name')}
+              />
+              {errors.team_name && <p className="field-error">{errors.team_name.message}</p>}
+            </div>
+
+            <div>
+              <label className="field-label" htmlFor="tentative_ps_id">
+                Tentative problem statement
+              </label>
+              <select
+                id="tentative_ps_id"
+                className="field-input"
+                {...register('tentative_ps_id')}
+              >
+                <option value="TBD">
+                  {psListPublished ? 'Not decided yet' : 'TBD — list not published yet'}
+                </option>
+                {problemStatements.map((ps) => (
+                  <option key={ps.id} value={ps.ps_id}>
+                    {ps.ps_id} — {ps.title}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                One choice for the whole team. You can change it until registration closes, and
+                you lock in the final one when you submit your idea.
+              </p>
+              {errors.tentative_ps_id && (
+                <p className="field-error">{errors.tentative_ps_id.message}</p>
+              )}
+            </div>
           </div>
         </section>
 
@@ -275,13 +306,7 @@ export function TeamRegistrationForm({
 
           <div className="grid gap-4 lg:grid-cols-2">
             {Array.from({ length: TEAM_SIZE }, (_, index) => (
-              <MemberFields
-                key={index}
-                index={index}
-                problemStatements={problemStatements}
-                psListPublished={psListPublished}
-                lockLeadEmail={mode === 'create'}
-              />
+              <MemberFields key={index} index={index} lockLeadEmail={mode === 'create'} />
             ))}
           </div>
         </section>

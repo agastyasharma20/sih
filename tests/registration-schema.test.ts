@@ -12,7 +12,6 @@ function validMember(i: number, overrides: Record<string, unknown> = {}) {
     enrollment_number: `0808CS22100${i}`,
     email: `member${i}@piemr.edu.in`,
     phone: `900000000${i}`,
-    tentative_ps_id: 'TBD',
     ...overrides,
   };
 }
@@ -20,6 +19,7 @@ function validMember(i: number, overrides: Record<string, unknown> = {}) {
 function validPayload(overrides: Record<string, unknown> = {}) {
   return {
     team_name: 'Team Cortex',
+    tentative_ps_id: 'TBD',
     members: Array.from({ length: 6 }, (_, i) => validMember(i)),
     primary_mentor: {
       full_name: 'Dr. Mentor',
@@ -129,6 +129,28 @@ describe('registration schema', () => {
       }),
     );
     expect(result.success).toBe(false);
+  });
+
+  it('takes one problem statement for the whole team', () => {
+    const result = registrationSchema.safeParse(validPayload({ tentative_ps_id: 'SIH1234' }));
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.tentative_ps_id).toBe('SIH1234');
+  });
+
+  it('defaults the team problem statement to TBD when omitted', () => {
+    const { tentative_ps_id: _omitted, ...withoutPs } = validPayload();
+    const result = registrationSchema.safeParse(withoutPs);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.tentative_ps_id).toBe('TBD');
+  });
+
+  it('no longer accepts a per-member problem statement', () => {
+    const members = Array.from({ length: 6 }, (_, i) => validMember(i));
+    const result = registrationSchema.safeParse(validPayload({ members }));
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.members[0]).not.toHaveProperty('tentative_ps_id');
+    }
   });
 
   it('emptyMember produces a row the schema rejects until filled', () => {
