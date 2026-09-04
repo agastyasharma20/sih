@@ -339,6 +339,39 @@ else changes.
 
 ---
 
+## Is it working? Check `/api/health`
+
+Open `https://your-app.vercel.app/api/health` in a browser. It reports
+which configuration is present and whether the database answers:
+
+```json
+{
+  "healthy": true,
+  "checks": {
+    "supabase_url": "set",
+    "publishable_key": "set",
+    "secret_key": "set",
+    "database": "ready (14 settings)",
+    "admin_access": "working"
+  }
+}
+```
+
+Anything reading `MISSING`, `WRONG KEY`, `ERROR` or `INCOMPLETE` names the
+problem directly. It returns presence only — no key or value is ever
+exposed — so it is safe to leave reachable.
+
+**Environment variables in Vercel only take effect on a new deployment.**
+After adding or changing one, go to Deployments → ⋯ → **Redeploy**.
+Vercel says this in a toast and it is the single easiest thing to miss.
+
+`SUPER_ADMIN_EMAIL` and `SUPER_ADMIN_PASSWORD` do **not** belong in
+Vercel. They are read only by the local seed script. Setting them in the
+hosting environment does nothing and leaves a password sitting where it
+serves no purpose — delete them.
+
+---
+
 ## Troubleshooting
 
 **Sign-in link goes to localhost** — Site URL is still the default.
