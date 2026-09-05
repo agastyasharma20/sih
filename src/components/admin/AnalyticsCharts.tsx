@@ -7,8 +7,16 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
+  Legend,
+  Line,
   Pie,
   PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -171,6 +179,98 @@ export function GenderDonut({ data }: { data: Slice[] }) {
         </Pie>
         <Tooltip {...tooltipStyle} />
       </PieChart>
+    </ChartFrame>
+  );
+}
+
+/* --------------------------------------------------------------- deep views */
+
+/**
+ * Daily arrivals as bars against the cumulative line.
+ *
+ * The cumulative curve alone always climbs and so always looks healthy;
+ * the bars underneath are what show a stall.
+ */
+export function VelocityChart({
+  data,
+}: {
+  data: Array<{ name: string; value: number; total: number }>;
+}) {
+  return (
+    <ChartFrame
+      title="Registration velocity"
+      subtitle="Teams per day (bars) against the running total (line)"
+      empty={data.length === 0}
+    >
+      <ComposedChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.15} vertical={false} />
+        <XAxis dataKey="name" {...axisProps} />
+        <YAxis yAxisId="left" allowDecimals={false} {...axisProps} />
+        <YAxis yAxisId="right" orientation="right" allowDecimals={false} {...axisProps} />
+        <Tooltip {...tooltipStyle} />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
+        <Bar yAxisId="left" dataKey="value" name="New teams" fill={PALETTE[1]} radius={[4, 4, 0, 0]} />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="total"
+          name="Cumulative"
+          stroke={PALETTE[0]}
+          strokeWidth={2}
+          dot={false}
+        />
+      </ComposedChart>
+    </ChartFrame>
+  );
+}
+
+/**
+ * Per-criterion averages as a share of each criterion's ceiling.
+ *
+ * Normalising to a percentage is the point: criteria are worth different
+ * marks, so raw averages plotted on one axis would compare nothing.
+ */
+export function CriterionRadar({
+  data,
+}: {
+  data: Array<{ name: string; utilisation: number }>;
+}) {
+  return (
+    <ChartFrame
+      title="Criterion utilisation"
+      subtitle="Average marks awarded as a percentage of each criterion's maximum"
+      empty={data.length === 0}
+    >
+      <RadarChart data={data} outerRadius="72%">
+        <PolarGrid stroke="currentColor" opacity={0.2} />
+        <PolarAngleAxis dataKey="name" tick={{ fontSize: 10, fill: 'currentColor' }} />
+        <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9, fill: 'currentColor' }} />
+        <Tooltip {...tooltipStyle} formatter={(value) => [`${value}%`, 'Utilisation']} />
+        <Radar
+          name="Utilisation"
+          dataKey="utilisation"
+          stroke={PALETTE[0]}
+          fill={PALETTE[0]}
+          fillOpacity={0.28}
+        />
+      </RadarChart>
+    </ChartFrame>
+  );
+}
+
+/** Distribution of averaged team totals, in fixed bands. */
+export function ScoreHistogram({ data, title, subtitle }: { data: Slice[]; title: string; subtitle?: string }) {
+  const total = data.reduce((sum, slice) => sum + slice.value, 0);
+
+  return (
+    <ChartFrame title={title} subtitle={subtitle} empty={total === 0}>
+      <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -24 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.15} vertical={false} />
+        <XAxis dataKey="name" {...axisProps} interval={0} angle={-30} textAnchor="end" height={46} />
+        <YAxis allowDecimals={false} {...axisProps} />
+        <Tooltip {...tooltipStyle} cursor={{ fill: 'currentColor', opacity: 0.06 }} />
+        <Bar dataKey="value" name="Teams" fill={PALETTE[3]} radius={[4, 4, 0, 0]} />
+      </BarChart>
     </ChartFrame>
   );
 }

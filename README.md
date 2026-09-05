@@ -88,8 +88,13 @@ optional mentor section, and that an empty form never reaches the network.
 registration schema (team size, the female-member rule, domain checks,
 in-form duplicates, and the two form-encoding cases below), the CSV
 reader used by the problem-statement importer (quoted fields, embedded
-commas and newlines, doubled quotes, CRLF, BOM, tab-separated paste), and
-the analytics aggregations.
+commas and newlines, doubled quotes, CRLF, BOM, tab-separated paste), the
+analytics aggregations, and the deep insights — IST bucketing, funnel
+drop-off, judge calibration and the score histogram's boundary cases.
+The analytics panels themselves are covered as components: tab switching
+and its ARIA state, the cross-tab totals, the funnel's drop-off labels,
+and that a stat tile renders its real figure before any animation frame
+runs.
 
 **Database tests** spin up a throwaway Postgres, apply every migration in
 order, and assert the real behaviour: a team of five is refused, a team
@@ -229,7 +234,7 @@ src/
       admin/
         page.tsx                overview + readiness warnings
         teams/                  rosters, per-team and bulk locking, export
-        analytics/              charts and data-quality checks
+        analytics/              five tabbed sections of deep analytics
         problem-statements/     bulk import and the active list
         settings/               dates, switches, account creation
         audit/                  activity trail
@@ -244,10 +249,17 @@ src/
       admin/problem-statements  single add + bulk CSV import
       admin/teams               lock / unlock
       admin/teams/export        roster CSV
+      admin/analytics/export    analytics snapshot CSV
+  components/
+    admin/insights/             tabs, stat tiles, heatmap, funnel, matrix
+    admin/ChartsLazy.tsx        Recharts, split out of the shared bundle
+    landing/LiveBackground.tsx  the layered canvas behind the hero
+    motion/                     MotionProvider and the scroll reveals
   lib/
     validation/registration.ts  the Zod schema shared by form and API
     csv.ts                      delimited reader/writer for import + export
     analytics.ts                pure aggregations for the dashboard
+    insights.ts                 velocity, heatmap, funnel, calibration
     supabase/                   browser, server, service-role clients
     auth.ts                     server-side role resolution
     email.ts, rate-limit.ts
@@ -268,8 +280,26 @@ scripts/seed-super-admin.ts
    it rather than duplicating. Until at least one statement exists, teams
    can only choose “TBD”, and the admin overview says so.
 2. **Set the dates and open registration** in Settings.
-3. **Watch Analytics** for teams with the wrong roster size, and the
-   female-member share.
+3. **Watch Analytics** — five tabs over the same live rows:
+   - **Pulse** — registrations per day against the running total, a
+     weekday × hour heatmap in IST (so a reminder mail lands when it will
+     be read), and the whole event as a funnel from registered to scored.
+   - **Participants** — the SIH eligibility check first: teams with no
+     female member and teams that are not exactly six. Then gender,
+     branch, year, roster size and a branch × year cross-tab.
+   - **Problem statements** — demand, theme and sponsoring organisation,
+     plus a concentration index that flags statements drawing more than
+     twice the average, where the internal round stops discriminating.
+   - **Judging** — criterion utilisation against each criterion's own
+     ceiling, the score distribution, and judge calibration: each
+     judge's mean against the panel's, which is the only view that
+     catches two judges marking the same field twenty points apart.
+   - **Operations** — administrative activity from the audit log, busiest
+     accounts, mentor coverage and account inventory. Row-level security
+     scopes it: a super-admin sees every action, an admin only their own.
+
+   The overview screen leads with the same warnings, and
+   **Export snapshot** downloads the whole page as CSV.
 4. **Export the roster** as CSV from the Teams screen (coordinators can
    too — it carries no marks).
 5. **Lock teams** individually or in bulk when the roster is settled.

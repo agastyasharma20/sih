@@ -1,7 +1,7 @@
-import Link from 'next/link';
 import { requireProfile, isAdminTier, isSpoc } from '@/lib/auth';
 import { Brand, BrandFooter } from '@/components/Brand';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { DashboardNav, type NavLink } from '@/components/DashboardNav';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
 
-  const links: Array<{ href: string; label: string }> = [];
+  const links: NavLink[] = [];
 
   if (isAdminTier(profile.role)) {
     links.push(
@@ -43,21 +43,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur-md supports-[backdrop-filter]:bg-white/70 dark:border-slate-800 dark:bg-slate-950/85 dark:supports-[backdrop-filter]:bg-slate-950/70">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
           <div className="flex items-center gap-8">
             <Brand />
-            <nav className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm font-medium">
-              {links.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-slate-600 transition hover:text-piemr-600 dark:text-slate-300"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
+            <DashboardNav links={links} />
           </div>
 
           <div className="flex items-center gap-3">
